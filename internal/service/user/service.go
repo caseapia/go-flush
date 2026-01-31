@@ -12,6 +12,7 @@ var (
 	ErrUserBanned        = errors.New("user banned")
 	ErrUserAlreadyExists = errors.New("user already exists")
 	ErrUserNotBanned     = errors.New("user is not banned")
+	ErrInvalidUserName   = errors.New("invalid user name")
 )
 
 type UserService struct {

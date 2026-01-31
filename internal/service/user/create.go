@@ -9,11 +9,16 @@ import (
 
 func (s *UserService) CreateUser(ctx context.Context, adminID int, name string) (*models.User, error) {
 	existing, err := s.repo.GetByName(ctx, name)
+
+	// Errors handling
 	if err != nil {
 		return nil, err
 	}
 	if existing != nil {
 		return nil, ErrUserAlreadyExists
+	}
+	if name == "" || len(name) < 3 || len(name) > 30 {
+		return nil, ErrInvalidUserName
 	}
 
 	user := &models.User{Name: name}
