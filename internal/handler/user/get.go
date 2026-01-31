@@ -10,7 +10,7 @@ import (
 func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	id, _ := strconv.Atoi(c.Params("id"))
 
-	user, err := h.service.GetUser(uint(id))
+	user, err := h.service.GetUser(c.UserContext(), uint64(id))
 
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
@@ -20,7 +20,7 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) GetUsersList(c *fiber.Ctx) error {
-	users, err := h.service.GetUsersList()
+	users, err := h.service.GetUsersList(c.UserContext())
 
 	if err != nil {
 		log.Println("Error fetching users:", err)

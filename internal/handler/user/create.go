@@ -16,14 +16,14 @@ func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request"})
 	}
 
-	user, err := h.service.CreateUser(input.Name)
+	user, err := h.service.CreateUser(c.UserContext(), 0, input.Name)
 
 	if err != nil {
 		if errors.Is(err, service.ErrUserAlreadyExists) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "username already exists"})
 		}
 
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create user"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err})
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(user)

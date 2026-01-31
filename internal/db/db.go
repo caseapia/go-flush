@@ -1,26 +1,36 @@
-package db
+package database
 
 import (
-	"log"
+	"database/sql"
+	"fmt"
+	"os"
 
-	loggerModels "github.com/caseapia/goproject-flush/internal/models/logger"
-	user "github.com/caseapia/goproject-flush/internal/models/user"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/mysqldialect"
 )
 
-var DB *gorm.DB
+var DB *bun.DB
 
-func Connect() {
-	dsn := "root:root@tcp(127.0.0.1:3306)/flushproject?charset=utf8mb4&parseTime=True&loc=Local"
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+func Connect() error {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME"),
+	)
+
+	sqlDB, err := sql.Open("mysql", dsn)
+
 	if err != nil {
-		log.Fatal("failed to connect database:", err)
+		return err
 	}
 
-	DB = db
-
-	if err := db.AutoMigrate(&user.User{}, &loggerModels.ActionLog{}); err != nil {
-		log.Fatal("failed to migrate:", err)
+	if err := sqlDB.Ping(); err != nil {
+		return err
 	}
+
+	DB = bun.NewDB(sqlDB, mysqldialect.New())
+	return nil
 }

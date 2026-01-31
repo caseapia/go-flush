@@ -16,7 +16,7 @@ func (h *UserHandler) BanUser(c *fiber.Ctx) error {
 
 	c.BodyParser(&input)
 
-	user, err := h.service.BanUser(uint(0), uint(id), input.Reason)
+	user, err := h.service.BanUser(c.UserContext(), uint64(0), uint64(id), input.Reason)
 
 	if err != nil {
 		status := fiber.StatusNotFound
@@ -34,7 +34,7 @@ func (h *UserHandler) BanUser(c *fiber.Ctx) error {
 func (h *UserHandler) UnbanUser(c *fiber.Ctx) error {
 	id, _ := strconv.Atoi(c.Params("id"))
 
-	user, err := h.service.UnbanUser(uint(0), uint(id))
+	user, err := h.service.UnbanUser(c.UserContext(), uint64(0), uint64(id))
 
 	if err != nil {
 		status := fiber.StatusNotFound

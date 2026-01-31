@@ -1,40 +1,53 @@
 package repository
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 
 	models "github.com/caseapia/goproject-flush/internal/models/user"
-	"gorm.io/gorm"
 )
 
-func (r *UserRepository) GetByID(id uint) (*models.User, error) {
-	var user models.User
-	err := r.db.First(&user, id).Error
+// GetByID
+func (r *UserRepository) GetByID(ctx context.Context, id uint64) (*models.User, error) {
+	u := new(models.User)
+	err := r.db.NewSelect().
+		Model(u).
+		Where("id = ?", id).
+		Scan(ctx)
 
 	if err != nil {
-		return nil, err
-	}
-
-	return &user, nil
-}
-
-func (r *UserRepository) GetAll() ([]models.User, error) {
-	var users []models.User
-
-	if err := r.db.Find(&users).Error; err != nil {
-		return nil, err
-	}
-
-	return users, nil
-}
-
-func (r *UserRepository) GetByName(name string) (*models.User, error) {
-	var user models.User
-	if err := r.db.Where("name = ?", name).First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return &user, nil
+	return u, nil
+}
+
+// GetAll
+func (r *UserRepository) GetAll(ctx context.Context) ([]models.User, error) {
+	var users []models.User
+	err := r.db.NewSelect().
+		Model(&users).
+		Scan(ctx)
+	return users, err
+}
+
+// GetByName
+func (r *UserRepository) GetByName(ctx context.Context, name string) (*models.User, error) {
+	u := new(models.User)
+	err := r.db.NewSelect().
+		Model(u).
+		Where("name = ?", name).
+		Scan(ctx)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return u, nil
 }

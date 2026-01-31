@@ -12,4 +12,5 @@ func RegisterRoutes(app fiber.Router, h *UserHandler) {
 	user.Delete("/unban/:id", h.UnbanUser)
 	user.Put("/create/", h.CreateUser)
 	user.Delete("/delete/:id", h.DeleteUser)
+	user.Post("/restore/:id", h.RestoreUser)
 }

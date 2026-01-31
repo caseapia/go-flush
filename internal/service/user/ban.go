@@ -1,14 +1,24 @@
 package service
 
 import (
+	"context"
+	"time"
+
 	loggermodule "github.com/caseapia/goproject-flush/internal/models/logger"
 	models "github.com/caseapia/goproject-flush/internal/models/user"
 )
 
-func (s *UserService) BanUser(adminID uint, userID uint, reason string) (*models.User, error) {
-	user, err := s.repo.GetByID(userID)
-
+func (s *UserService) BanUser(
+	ctx context.Context,
+	adminID uint64,
+	userID uint64,
+	reason string,
+) (*models.User, error) {
+	user, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
+		return nil, err
+	}
+	if user == nil {
 		return nil, ErrUserNotFound
 	}
 
@@ -18,17 +28,33 @@ func (s *UserService) BanUser(adminID uint, userID uint, reason string) (*models
 
 	user.IsBanned = true
 	user.BanReason = &reason
+	user.UpdatedAt = time.Now()
 
-	reasonText := "Reason: " + reason
-	s.logger.Log(adminID, userID, loggermodule.Ban, reasonText)
+	if err := s.repo.Update(ctx, user); err != nil {
+		return nil, err
+	}
 
-	return user, s.repo.Update(user)
+	_ = s.logger.Log(
+		ctx,
+		adminID,
+		userID,
+		loggermodule.Ban,
+		"Reason: "+reason,
+	)
+
+	return user, nil
 }
 
-func (s *UserService) UnbanUser(adminID uint, userID uint) (*models.User, error) {
-	user, err := s.repo.GetByID(userID)
-
+func (s *UserService) UnbanUser(
+	ctx context.Context,
+	adminID uint64,
+	userID uint64,
+) (*models.User, error) {
+	user, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
+		return nil, err
+	}
+	if user == nil {
 		return nil, ErrUserNotFound
 	}
 
@@ -38,12 +64,18 @@ func (s *UserService) UnbanUser(adminID uint, userID uint) (*models.User, error)
 
 	user.IsBanned = false
 	user.BanReason = nil
+	user.UpdatedAt = time.Now()
 
-	if err := s.repo.Update(user); err != nil {
+	if err := s.repo.Update(ctx, user); err != nil {
 		return nil, err
 	}
 
-	s.logger.Log(adminID, userID, loggermodule.Unban)
+	_ = s.logger.Log(
+		ctx,
+		adminID,
+		userID,
+		loggermodule.Unban,
+	)
 
-	return user, s.repo.Update(user)
+	return user, nil
 }

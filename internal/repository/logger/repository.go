@@ -1,11 +1,13 @@
 package loggerrepository
 
-import "gorm.io/gorm"
+import (
+	"github.com/uptrace/bun"
+)
 
 type LoggerRepository struct {
-	db *gorm.DB
+	db *bun.DB
 }
 
-func NewLoggerRepository(db *gorm.DB) *LoggerRepository {
+func NewLoggerRepository(db *bun.DB) *LoggerRepository {
 	return &LoggerRepository{db: db}
 }

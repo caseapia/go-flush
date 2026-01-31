@@ -1,9 +1,14 @@
 package repository
 
 import (
+	"context"
+
 	models "github.com/caseapia/goproject-flush/internal/models/user"
 )
 
-func (r *UserRepository) Create(user *models.User) error {
-	return r.db.Create(user).Error
+func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
+	_, err := r.db.NewInsert().
+		Model(user).
+		Exec(ctx)
+	return err
 }

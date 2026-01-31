@@ -1,11 +1,13 @@
 package repository
 
-import "gorm.io/gorm"
+import (
+	"github.com/uptrace/bun"
+)
 
 type UserRepository struct {
-	db *gorm.DB
+	db *bun.DB
 }
 
-func NewUserRepository(db *gorm.DB) *UserRepository {
+func NewUserRepository(db *bun.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
