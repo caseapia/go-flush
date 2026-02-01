@@ -1,11 +1,11 @@
 package userhandler
 
-import service "github.com/caseapia/goproject-flush/internal/service/user"
+import userservice "github.com/caseapia/goproject-flush/internal/service/user"
 
 type UserHandler struct {
-	service *service.UserService
+	service *userservice.UserService
 }
 
-func NewUserHandler(s *service.UserService) *UserHandler {
+func NewUserHandler(s *userservice.UserService) *UserHandler {
 	return &UserHandler{service: s}
 }
