@@ -6,31 +6,29 @@ on:
       - master
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repo
-      - name: Checkout repo
+      # Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
 
       # Setup Go
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.25.6"
+          go-version: "1.21"
 
-      # Build the Go binary
-      - name: Build Go binary
-        id: build
+      # Build backend
+      - name: Build backend
         run: |
           set -o pipefail
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o be-go-flush ./cmd 2>&1 | tee build.log
-        continue-on-error: true
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o be-go-flush ./cmd
+          ls -lh be-go-flush
 
-      # Deploy binary to server if build succeeded
-      - name: Copy binary to server
-        if: ${{ success() }}
+      # Copy binary to server
+      - name: Deploy backend
         uses: appleboy/scp-action@v0.1.5
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -40,9 +38,8 @@ jobs:
           source: "be-go-flush"
           target: "${{ secrets.APP_PATH }}/be-go-flush"
 
-      # Restart backend on server
+      # Restart backend
       - name: Restart backend
-        if: ${{ success() }}
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -54,40 +51,11 @@ jobs:
             pkill -f be-go-flush || true
             nohup ./be-go-flush > app.log 2>&1 &
 
-      # Send Discord notification
-      - name: Discord notification
+      # Discord notification
+      - name: Notify Discord
         run: |
-          # Determine job status
-          if [ "${{ job.status }}" == "success" ]; then
-            COLOR=3066993
-            TITLE="✅ Backend Deployed!"
-            DESCRIPTION="New build successfully deployed to server"
-          else
-            COLOR=15158332
-            TITLE="❌ Deploy Failed!"
-            DESCRIPTION="Go build or deploy failed"
-          fi
-
-          # Get first 1000 chars of build log
-          LOG_CONTENT=$(head -c 1000 build.log | sed 's/"/\\"/g')
-
-          # Send Discord webhook
-          curl -H "Content-Type: application/json" \
-            -X POST \
-            -d '{
-              "embeds": [
-                {
-                  "title": "'"$TITLE"'",
-                  "description": "'"$DESCRIPTION"'",
-                  "color": '"$COLOR"',
-                  "fields": [
-                    {"name": "Commit", "value": "'"$GITHUB_SHA"'", "inline": true},
-                    {"name": "Author", "value": "'"$GITHUB_ACTOR"'", "inline": true},
-                    {"name": "Repo Link", "value": "'"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"'"},
-                    {"name": "Build Log (truncated)", "value": "'"${LOG_CONTENT}"'"}
-                  ],
-                  "timestamp": "'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"
-                }
-              ]
-            }' \
-            ${{ secrets.DISCORD_WEBHOOK }}
+          STATUS=$([[ ${{ job.status }} == "success" ]] && echo "✅ Success" || echo "❌ Failed")
+          curl -H "Content-Type: application/json" -X POST -d '{
+            "content": "'"$STATUS"'",
+            "embeds": [{"title":"Go Backend Deploy","description":"Commit: $GITHUB_SHA\nActor: $GITHUB_ACTOR"}]
+          }' ${{ secrets.DISCORD_WEBHOOK }}
