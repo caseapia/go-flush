@@ -9,30 +9,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout
-      - name: Checkout
+      # ----------------------
+      # 1. Checkout репозитория
+      # ----------------------
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Go
+      # ----------------------
+      # 2. Установка Go
+      # ----------------------
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
 
-      # 3️⃣ Download deps
-      - name: Download deps
+      # ----------------------
+      # 3. Загрузка зависимостей
+      # ----------------------
+      - name: Download dependencies
         run: go mod download
 
-      # 4️⃣ Run tests
+      # ----------------------
+      # 4. Запуск тестов
+      # ----------------------
       - name: Run tests
         run: go test ./...
 
-      # 5️⃣ Build Linux binary
+      # ----------------------
+      # 5. Сборка бинаря
+      # ----------------------
       - name: Build Linux binary
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app ./cmd
 
-      # 6️⃣ Upload binary to server
+      # ----------------------
+      # 6. Отправка бинаря на сервер
+      # ----------------------
       - name: Upload binary to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -40,58 +52,41 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: app
-          target: /var/www/be-go-flush/app.new
+          target: /var/www/be-go-flush/app
           overwrite: true
 
-      # 7️⃣ Move binary and restart service
-      - name: Restart service
+      # ----------------------
+      # 7. Перезапуск сервиса на сервере
+      # ----------------------
+      - name: Restart backend service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            mv /var/www/be-go-flush/app.new /var/www/be-go-flush/app
-            chmod +x /var/www/be-go-flush/app
-            sudo systemctl restart be-go-flush
+            sudo systemctl stop be-go-flush || true
+            sudo chmod +x /var/www/be-go-flush/app
+            sudo systemctl start be-go-flush
 
-      # 8️⃣ Discord notification
-      - name: Discord notify
+      # ----------------------
+      # 8. Discord уведомление
+      # ----------------------
+      - name: Discord notification
         if: always()
         run: |
-          TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S')
+          STATUS="${{ job.status }}"
           curl -H "Content-Type: application/json" \
-            -d "{
-              \"username\": \"Deploy Bot\",
-              \"avatar_url\": \"https://i.imgur.com/4M34hi2.png\",
-              \"embeds\": [{
-                \"title\": \"🚀 Go Backend Deploy\",
-                \"url\": \"https://github.com/caseapia/be-go-flush/commit/${{ github.sha }}\",
-                \"color\": 3066993,
-                \"fields\": [
-                  { \"name\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"inline\": true },
-                  { \"name\": \"Commit\", \"value\": \"${{ github.sha }}\", \"inline\": true },
-                  { \"name\": \"Actor\", \"value\": \"${{ github.actor }}\", \"inline\": true },
-                  { \"name\": \"Status\", \"value\": \"${{ job.status }}\", \"inline\": true },
-                  { \"name\": \"Time\", \"value\": \"$TIMESTAMP\", \"inline\": true }
-                ],
-                \"footer\": { \"text\": \"Auto-deploy via GitHub Actions\" }
-              }]
-            }" ${{ secrets.DISCORD_WEBHOOK }}
-      - name: Notify server started
-        run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"username\": \"Deploy Bot\",
-              \"embeds\": [{
-                \"title\": \"🚀 Go Backend Deployed\",
-                \"color\": 3066993,
-                \"fields\": [
-                  { \"name\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"inline\": true },
-                  { \"name\": \"Commit\", \"value\": \"${{ github.sha }}\", \"inline\": true },
-                  { \"name\": \"Actor\", \"value\": \"${{ github.actor }}\", \"inline\": true },
-                  { \"name\": \"Status\", \"value\": \"Server started\", \"inline\": true }
-                ],
-                \"footer\": { \"text\": \"GitHub Actions Deploy\" }
-              }]
-            }" ${{ secrets.DISCORD_WEBHOOK }}
+               -d "{
+                \"username\": \"Deploy Bot\",
+                \"embeds\": [
+                  {
+                    \"title\": \"🚀 Go Backend Deploy\",
+                    \"description\": \"**Status:** $STATUS\n**Branch:** ${{ github.ref_name }}\n**Commit:** ${{ github.sha }}\",
+                    \"color\": $([ \"$STATUS\" = \"success\" ] && echo 3066993 || echo 15158332),
+                    \"footer\": {\"text\": \"Auto-deploy via GitHub Actions\"},
+                    \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+                  }
+                ]
+               }" \
+               "${{ secrets.DISCORD_WEBHOOK }}"
