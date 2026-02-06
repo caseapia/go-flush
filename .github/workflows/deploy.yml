@@ -25,7 +25,7 @@ jobs:
 
       - name: Build Linux binary
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app ./cmd
 
       - name: Upload binary to server
         uses: appleboy/scp-action@v0.1.7
@@ -56,7 +56,7 @@ jobs:
             "username": "Deploy Bot",
             "embeds": [{
               "title": "🚀 Go Backend Deploy",
-              "description": "Статус: **${{ job.status }}**",
+              "description": "**Branch:** ${{ github.ref_name }}\n**Commit:** ${{ github.sha }}\n**Status:** ${{ job.status }}\n**Actor:** ${{ github.actor }}",
               "color": 3066993
             }]
           }' \
