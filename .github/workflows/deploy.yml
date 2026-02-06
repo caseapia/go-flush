@@ -10,20 +10,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout the repo
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Go
+      # Setup Go
+      - name: Setup Go
         uses: actions/setup-go@v4
         with:
           go-version: "1.25.6"
 
+      # Build the Go binary
       - name: Build Go binary
+        id: build
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o be-go-flush ./cmd
+          set -o pipefail
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o be-go-flush ./cmd 2>&1 | tee build.log
         continue-on-error: true
 
+      # Deploy binary to server if build succeeded
       - name: Copy binary to server
+        if: ${{ success() }}
         uses: appleboy/scp-action@v0.1.5
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -33,7 +40,9 @@ jobs:
           source: "be-go-flush"
           target: "${{ secrets.APP_PATH }}/be-go-flush"
 
-      - name: Restart backend on server
+      # Restart backend on server
+      - name: Restart backend
+        if: ${{ success() }}
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -45,50 +54,40 @@ jobs:
             pkill -f be-go-flush || true
             nohup ./be-go-flush > app.log 2>&1 &
 
-      - name: Send Discord notification
-              run: |
-                if [ ${{ steps.build.outcome }} == 'success' ]; then
-                  COLOR=3066993
-                  TITLE="✅ backend has been deployed!"
-                  DESCRIPTION="new build has been successfully deployed on the server"
-                else
-                  COLOR=15158332
-                  TITLE="❌ deploy error!"
-                  DESCRIPTION="backend building has finished with error"
-                fi
+      # Send Discord notification
+      - name: Discord notification
+        run: |
+          # Determine job status
+          if [ "${{ job.status }}" == "success" ]; then
+            COLOR=3066993
+            TITLE="✅ Backend Deployed!"
+            DESCRIPTION="New build successfully deployed to server"
+          else
+            COLOR=15158332
+            TITLE="❌ Deploy Failed!"
+            DESCRIPTION="Go build or deploy failed"
+          fi
 
-                LOG_CONTENT=$(head -c 1000 build.log | sed 's/"/\\"/g')
+          # Get first 1000 chars of build log
+          LOG_CONTENT=$(head -c 1000 build.log | sed 's/"/\\"/g')
 
-                curl -H "Content-Type: application/json" \
-                  -X POST \
-                  -d '{
-                    "embeds": [
-                      {
-                        "title": "'"$TITLE"'",
-                        "description": "'"$DESCRIPTION"'",
-                        "color": '"$COLOR"',
-                        "fields": [
-                          {
-                            "name": "commit",
-                            "value": "'"$GITHUB_SHA"'",
-                            "inline": true
-                          },
-                          {
-                            "name": "author",
-                            "value": "'"$GITHUB_ACTOR"'",
-                            "inline": true
-                          },
-                          {
-                            "name": "repository link",
-                            "value": "'"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"'"
-                          },
-                          {
-                            "name": "build log (not fully)",
-                            "value": "'"${LOG_CONTENT}"'"
-                          }
-                        ],
-                        "timestamp": "'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"
-                      }
-                    ]
-                  }' \
-                  ${{ secrets.DISCORD_WEBHOOK }}
+          # Send Discord webhook
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d '{
+              "embeds": [
+                {
+                  "title": "'"$TITLE"'",
+                  "description": "'"$DESCRIPTION"'",
+                  "color": '"$COLOR"',
+                  "fields": [
+                    {"name": "Commit", "value": "'"$GITHUB_SHA"'", "inline": true},
+                    {"name": "Author", "value": "'"$GITHUB_ACTOR"'", "inline": true},
+                    {"name": "Repo Link", "value": "'"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"'"},
+                    {"name": "Build Log (truncated)", "value": "'"${LOG_CONTENT}"'"}
+                  ],
+                  "timestamp": "'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"
+                }
+              ]
+            }' \
+            ${{ secrets.DISCORD_WEBHOOK }}
