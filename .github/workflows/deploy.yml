@@ -78,3 +78,20 @@ jobs:
                 \"footer\": { \"text\": \"Auto-deploy via GitHub Actions\" }
               }]
             }" ${{ secrets.DISCORD_WEBHOOK }}
+      - name: Notify server started
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"username\": \"Deploy Bot\",
+              \"embeds\": [{
+                \"title\": \"🚀 Go Backend Deployed\",
+                \"color\": 3066993,
+                \"fields\": [
+                  { \"name\": \"Branch\", \"value\": \"${{ github.ref_name }}\", \"inline\": true },
+                  { \"name\": \"Commit\", \"value\": \"${{ github.sha }}\", \"inline\": true },
+                  { \"name\": \"Actor\", \"value\": \"${{ github.actor }}\", \"inline\": true },
+                  { \"name\": \"Status\", \"value\": \"Server started\", \"inline\": true }
+                ],
+                \"footer\": { \"text\": \"GitHub Actions Deploy\" }
+              }]
+            }" ${{ secrets.DISCORD_WEBHOOK }}
