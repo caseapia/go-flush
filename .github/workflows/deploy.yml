@@ -9,93 +9,70 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ----------------------
-      # 1. Checkout репозитория
-      # ----------------------
+      # 1. Checkout
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ----------------------
-      # 2. Установка Go
-      # ----------------------
+      # 2. Setup Go
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
 
-      # ----------------------
-      # 3. Загрузка зависимостей
-      # ----------------------
+      # 3. Download dependencies
       - name: Download dependencies
         run: go mod download
 
-      # ----------------------
-      # 4. Запуск тестов
-      # ----------------------
+      # 4. Run tests
       - name: Run tests
         run: go test ./...
 
-      # ----------------------
-      # 5. Сборка Linux бинаря
-      # ----------------------
+      # 5. Build Linux binary
       - name: Build Linux binary
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app.new ./cmd
 
-      # ----------------------
-      # 6. Загрузка .env и бинаря на сервер
-      # ----------------------
-      - name: Upload .env and binary
+      # 6. Upload binary via SCP
+      - name: Upload binary to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: app.new
+          target: /var/www/be-go-flush/app.new
+          overwrite: true
+
+      # 7. Update .env and deploy
+      - name: Deploy and restart service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Создаем папку, если её нет
+            # Создаем папку если не существует
             mkdir -p /var/www/be-go-flush
 
-            # Загружаем .env
+            # Обновляем .env при каждом деплое
             ENV_FILE="/var/www/be-go-flush/.env"
-            if [ ! -f "$ENV_FILE" ]; then
-              echo "Creating .env file..."
-              cat > "$ENV_FILE" <<EOF
-                DB_USER=${{ secrets.DB_USER }}
-                DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-                DB_HOST=${{ secrets.DB_HOST }}
-                DB_PORT=${{ secrets.DB_PORT }}
-                DB_NAME=${{ secrets.DB_NAME }}
-                EOF
-                              chmod 600 "$ENV_FILE"
-                            else
-                              echo ".env already exists, skipping creation."
-                            fi
+            echo "Updating .env file..."
+            echo "DB_USER=${{ secrets.DB_USER }}" > "$ENV_FILE"
+            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> "$ENV_FILE"
+            echo "DB_HOST=${{ secrets.DB_HOST }}" >> "$ENV_FILE"
+            echo "DB_PORT=${{ secrets.DB_PORT }}" >> "$ENV_FILE"
+            echo "DB_NAME=${{ secrets.DB_NAME }}" >> "$ENV_FILE"
+            chmod 600 "$ENV_FILE"
 
-            # Загружаем бинарь как app.new
-            cat > /var/www/be-go-flush/app.new <<'EOF'
-              $(cat app.new | base64)
-              EOF
-                          base64 -d /var/www/be-go-flush/app.new > /var/www/be-go-flush/app.new.bin
-                          mv /var/www/be-go-flush/app.new.bin /var/www/be-go-flush/app.new
-                          chmod +x /var/www/be-go-flush/app.new
-
-      # ----------------------
-      # 7. Перезапуск сервиса с минимальным простоем
-      # ----------------------
-      - name: Swap and restart service
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            sudo systemctl stop be-go-flush || true
+            # Заменяем бинарь
             mv /var/www/be-go-flush/app.new /var/www/be-go-flush/app
-            sudo systemctl start be-go-flush
+            chmod +x /var/www/be-go-flush/app
 
-      # ----------------------
-      # 8. Discord уведомление
-      # ----------------------
+            # Перезапуск systemd сервиса
+            sudo systemctl daemon-reload
+            sudo systemctl restart be-go-flush
+
+      # 8. Discord notification
       - name: Discord notification
         if: always()
         run: |
