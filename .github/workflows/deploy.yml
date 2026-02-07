@@ -36,66 +36,65 @@ jobs:
         run: go test ./...
 
       # ----------------------
-      # 5. Загрузка .env на сервер
-      # ----------------------
-      - name: Upload .env to server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            mkdir -p /var/www/be-go-flush
-            ENV_FILE="/var/www/be-go-flush/.env"
-            if [ ! -f "$ENV_FILE" ]; then
-              echo "Creating .env file..."
-              echo "DB_USER=${{ secrets.DB_USER }}" > "$ENV_FILE"
-              echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> "$ENV_FILE"
-              echo "DB_HOST=${{ secrets.DB_HOST }}" >> "$ENV_FILE"
-              echo "DB_PORT=${{ secrets.DB_PORT }}" >> "$ENV_FILE"
-              echo "DB_NAME=${{ secrets.DB_NAME }}" >> "$ENV_FILE"
-              chmod 600 "$ENV_FILE"
-            else
-              echo ".env already exists, skipping creation."
-            fi
-
-      # ----------------------
-      # 6. Сборка бинаря
+      # 5. Сборка Linux бинаря
       # ----------------------
       - name: Build Linux binary
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app ./cmd
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app.new ./cmd
 
       # ----------------------
-      # 7. Отправка бинаря на сервер
+      # 6. Загрузка .env и бинаря на сервер
       # ----------------------
-      - name: Upload binary to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: app
-          target: /var/www/be-go-flush/app
-          overwrite: true
-
-      # ----------------------
-      # 8. Перезапуск сервиса на сервере
-      # ----------------------
-      - name: Restart backend service
+      - name: Upload .env and binary
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo systemctl daemon-reload
+            # Создаем папку, если её нет
+            mkdir -p /var/www/be-go-flush
+
+            # Загружаем .env
+            ENV_FILE="/var/www/be-go-flush/.env"
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "Creating .env file..."
+              cat > "$ENV_FILE" <<EOF
+                DB_USER=${{ secrets.DB_USER }}
+                DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+                DB_HOST=${{ secrets.DB_HOST }}
+                DB_PORT=${{ secrets.DB_PORT }}
+                DB_NAME=${{ secrets.DB_NAME }}
+                EOF
+                              chmod 600 "$ENV_FILE"
+                            else
+                              echo ".env already exists, skipping creation."
+                            fi
+
+            # Загружаем бинарь как app.new
+            cat > /var/www/be-go-flush/app.new <<'EOF'
+              $(cat app.new | base64)
+              EOF
+                          base64 -d /var/www/be-go-flush/app.new > /var/www/be-go-flush/app.new.bin
+                          mv /var/www/be-go-flush/app.new.bin /var/www/be-go-flush/app.new
+                          chmod +x /var/www/be-go-flush/app.new
+
+      # ----------------------
+      # 7. Перезапуск сервиса с минимальным простоем
+      # ----------------------
+      - name: Swap and restart service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
             sudo systemctl stop be-go-flush || true
-            sudo chmod +x /var/www/be-go-flush/app
+            mv /var/www/be-go-flush/app.new /var/www/be-go-flush/app
             sudo systemctl start be-go-flush
 
       # ----------------------
-      # 9. Discord уведомление
+      # 8. Discord уведомление
       # ----------------------
       - name: Discord notification
         if: always()
