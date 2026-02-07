@@ -9,30 +9,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ----------------------
       # 1. Checkout
+      # ----------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ----------------------
       # 2. Setup Go
+      # ----------------------
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
 
+      # ----------------------
       # 3. Download dependencies
+      # ----------------------
       - name: Download dependencies
         run: go mod download
 
+      # ----------------------
       # 4. Run tests
+      # ----------------------
       - name: Run tests
         run: go test ./...
 
+      # ----------------------
       # 5. Build Linux binary
+      # ----------------------
       - name: Build Linux binary
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app.new ./cmd
 
+      # ----------------------
       # 6. Upload binary to server
+      # ----------------------
       - name: Upload binary to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -40,54 +52,77 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: app.new
-          target: /var/www/be-go-flush/app.new
+          target: /var/www/be-go-flush/app/app.new
           overwrite: true
 
-      # 7. Deploy, update .env, swap binary, restart service
+      # ----------------------
+      # 7. Deploy: update .env, swap binary, restart service
+      # ----------------------
       - name: Deploy and restart service
+        id: deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            mkdir -p /var/www/be-go-flush
+            set -e
+            LOG="/tmp/deploy_log.txt"
+            echo "" > $LOG
 
-            # Обновляем .env при каждом деплое
-            ENV_FILE="/var/www/be-go-flush/.env"
-            echo "Updating .env file..."
-            echo "DB_USER=${{ secrets.DB_USER }}" > "$ENV_FILE"
-            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> "$ENV_FILE"
-            echo "DB_HOST=${{ secrets.DB_HOST }}" >> "$ENV_FILE"
-            echo "DB_PORT=${{ secrets.DB_PORT }}" >> "$ENV_FILE"
-            echo "DB_NAME=${{ secrets.DB_NAME }}" >> "$ENV_FILE"
+            mkdir -p /var/www/be-go-flush/app
+
+            # ----------------------
+            # Обновляем .env
+            # ----------------------
+            echo "Updating .env..." | tee -a $LOG
+            ENV_FILE="/var/www/be-go-flush/app/.env"
+            {
+              echo "DB_USER=${{ secrets.DB_USER }}"
+              echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}"
+              echo "DB_HOST=${{ secrets.DB_HOST }}"
+              echo "DB_PORT=${{ secrets.DB_PORT }}"
+              echo "DB_NAME=${{ secrets.DB_NAME }}"
+            } > "$ENV_FILE" 2>> $LOG
             chmod 600 "$ENV_FILE"
 
-            # Удаляем старую папку/файл, если есть
-            if [ -e /var/www/be-go-flush/app ]; then
-              rm -rf /var/www/be-go-flush/app
+            # ----------------------
+            # Удаляем старый бинарь и заменяем
+            # ----------------------
+            echo "Replacing binary..." | tee -a $LOG
+            if [ -f /var/www/be-go-flush/app/app ]; then
+              rm -f /var/www/be-go-flush/app/app 2>> $LOG
             fi
+            mv /var/www/be-go-flush/app/app.new /var/www/be-go-flush/app/app 2>> $LOG
+            chmod +x /var/www/be-go-flush/app/app 2>> $LOG
 
-            # Переименовываем бинарь
-            mv /var/www/be-go-flush/app.new /var/www/be-go-flush/app
-            chmod +x /var/www/be-go-flush/app
+            # ----------------------
+            # Перезапуск systemd с паролем из секрета
+            # ----------------------
+            echo "Restarting service..." | tee -a $LOG
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl daemon-reload 2>> $LOG
+            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl restart be-go-flush 2>> $LOG
 
-            # Перезапуск systemd с паролем из секретов
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl daemon-reload
-            echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl restart be-go-flush
+            cat $LOG
+          # Сохраняем вывод как output
+          output: logs
 
-      # 8. Discord notification
+      # ----------------------
+      # 8. Discord notification с логами
+      # ----------------------
       - name: Discord notification
         if: always()
         run: |
+          LOGS="${{ steps.deploy.outputs.logs }}"
           STATUS="${{ job.status }}"
+          ERRORS=$(echo "$LOGS" | grep -Ei "error|err|fail" || echo "No errors found")
           curl -H "Content-Type: application/json" \
                -d "{
                 \"username\": \"Deploy Bot\",
                 \"embeds\": [
                   {
                     \"title\": \"🚀 Go Backend Deploy\",
-                    \"description\": \"**Status:** $STATUS\n**Branch:** ${{ github.ref_name }}\n**Commit:** ${{ github.sha }}\",
+                    \"description\": \"**Status:** $STATUS\n**Branch:** ${{ github.ref_name }}\n**Commit:** ${{ github.sha }}\n**Errors:** $ERRORS\",
                     \"color\": $([ \"$STATUS\" = \"success\" ] && echo 3066993 || echo 15158332),
                     \"footer\": {\"text\": \"Auto-deploy via GitHub Actions\"},
                     \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
