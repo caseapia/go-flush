@@ -33,6 +33,7 @@ func (m *AdminModule) RegisterRoutes(app fiber.Router) {
 
 	// Ranks
 	admin.Get("/ranks", m.RanksHandler.GetRanksList)
+	admin.Post("/rank/create", m.RanksHandler.CreateRank)
 	admin.Post("/setstaff/:id", m.RanksHandler.SetStaffRank)
 	admin.Post("/setdeveloper/:id", m.RanksHandler.SetDeveloperRank)
 
