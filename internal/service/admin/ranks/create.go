@@ -1,6 +1,8 @@
 package adminRanks
 
 import (
+	"database/sql"
+	"errors"
 	"strings"
 
 	"github.com/caseapia/goproject-flush/internal/models/admin/ranks"
@@ -12,7 +14,8 @@ import (
 
 func (s *RanksService) CreateRank(ctx *fiber.Ctx, adminID uint64, rankName string, rankColor string, rankFlags []string) (*ranks.RankStructure, error) {
 	existing, err := s.repo.GetByName(ctx.UserContext(), rankName)
-	if err != nil {
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 

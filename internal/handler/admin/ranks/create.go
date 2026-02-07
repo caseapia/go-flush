@@ -1,6 +1,10 @@
 package adminRanks
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"strings"
+
+	"github.com/gofiber/fiber/v2"
+)
 
 func (r *Handler) CreateRank(c *fiber.Ctx) error {
 	var input struct {
@@ -11,6 +15,10 @@ func (r *Handler) CreateRank(c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	for i, flag := range input.Flags {
+		input.Flags[i] = strings.ToUpper(flag)
 	}
 
 	rank, err := r.service.CreateRank(c, 0, input.Name, input.Color, input.Flags)

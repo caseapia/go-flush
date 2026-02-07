@@ -6,6 +6,7 @@ import (
 	AdminRanksRepository "github.com/caseapia/goproject-flush/internal/repository/admin/ranks"
 	AdminRanksService "github.com/caseapia/goproject-flush/internal/service/admin/ranks"
 	Contracts "github.com/caseapia/goproject-flush/internal/service/contracts"
+	"github.com/caseapia/goproject-flush/internal/service/logger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/uptrace/bun"
 )
@@ -16,9 +17,9 @@ type AdminModule struct {
 	UserHandler  *adminUser.Handler
 }
 
-func NewAdminModule(db *bun.DB, userRankSetter Contracts.UserRankSetter, userHandler *adminUser.Handler) *AdminModule {
+func NewAdminModule(db *bun.DB, userRankSetter Contracts.UserRankSetter, userHandler *adminUser.Handler, logger *logger.LoggerService) *AdminModule {
 	ranksRepo := AdminRanksRepository.NewRanksRepository(db)
-	ranksSrv := AdminRanksService.NewRanksService(ranksRepo, userRankSetter)
+	ranksSrv := AdminRanksService.NewRanksService(ranksRepo, userRankSetter, logger)
 	ranksHandler := adminRanks.NewHandler(ranksSrv)
 
 	return &AdminModule{

@@ -11,25 +11,27 @@ import (
 	"github.com/caseapia/goproject-flush/internal/module/user"
 	adminUserRepoPkg "github.com/caseapia/goproject-flush/internal/repository/admin/user"
 	adminUserService "github.com/caseapia/goproject-flush/internal/service/admin/user"
-	"github.com/caseapia/goproject-flush/internal/service/contracts"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gookit/slog"
 )
 
 func main() {
+	// ---------------- Logger ----------------
 	slog.Configure(func(logger *slog.SugaredLogger) {
 		f := logger.Formatter.(*slog.TextFormatter)
 		f.EnableColor = true
 	})
 	slog.SetFormatter(slog.NewJSONFormatter())
 
+	// ---------------- DB ----------------
 	config.LoadEnv()
 	db := config.Connect()
 	if db == nil {
 		log.Fatal("Failed to connect to DB")
 	}
 
+	// ---------------- Fiber App ----------------
 	app := fiber.New(fiber.Config{
 		ErrorHandler: middleware.AppErrorHandler,
 	})
@@ -39,12 +41,10 @@ func main() {
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 
+	// ---------------- Modules ----------------
 	loggerM := logger.NewLoggerModule(db)
 
-	var rankProvider contracts.RanksProvider = nil
-	userM := user.NewUserModule(db, loggerM.Service, rankProvider)
-
-	adminM := admin.NewAdminModule(db, (contracts.UserRankSetter)(nil), nil)
+	adminM := admin.NewAdminModule(db, nil, nil, loggerM.Service)
 
 	userRepo := config.NewUserRepository()
 	adminUserRepo := adminUserRepoPkg.NewAdminUserRepository(db)
@@ -56,13 +56,16 @@ func main() {
 		adminUserRepo,
 	)
 
-	adminM.RanksService.SetUserRankSetter(adminUserSrv)
-
 	userHandler := adminUserHandler.NewAdminUserHandler(adminUserSrv)
-	userM.Service.SetRanksService(adminM.RanksService)
+
 	adminM.UserHandler = userHandler
 
+	userM := user.NewUserModule(db, loggerM.Service, adminM.RanksService)
+	userM.Service.SetRanksService(adminM.RanksService)
+
+	// ---------------- Routes ----------------
 	config.SetupRoutes(app, userM, loggerM, adminM)
 
+	// ---------------- Start Server ----------------
 	log.Fatal(app.Listen(":8080"))
 }

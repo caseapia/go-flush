@@ -12,10 +12,11 @@ type RanksService struct {
 	logger         *logger.LoggerService
 }
 
-func NewRanksService(r *AdminRanksRepository.RanksRepository, u contracts.UserRankSetter) *RanksService {
+func NewRanksService(repo *AdminRanksRepository.RanksRepository, userRankSetter contracts.UserRankSetter, logger *logger.LoggerService) *RanksService {
 	return &RanksService{
-		repo:           r,
-		userRankSetter: u,
+		repo:           repo,
+		logger:         logger,
+		userRankSetter: userRankSetter,
 	}
 }
 
