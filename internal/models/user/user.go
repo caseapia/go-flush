@@ -14,6 +14,7 @@ type User struct {
 	IsDeleted     bool       `bun:"is_deleted" json:"isDeleted,omitempty"`
 	StaffRank     int        `bun:"staff_rank,default:1" json:"staffRank"`
 	DeveloperRank int        `bun:"developer_rank,default:1" json:"developerRank"`
+	Flags         []string   `bun:"staff_flags" json:"staff_flags"`
 	CreatedAt     time.Time  `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
 	UpdatedAt     time.Time  `bun:"updated_at,notnull,default:current_timestamp" json:"updatedAt"`
 	DeletedAt     *time.Time `bun:"deleted_at,nullzero" json:"-"`
@@ -41,4 +42,29 @@ func (u *User) SetDeveloperRank(rank int) (*User, error) {
 	u.DeveloperRank = rank
 	u.UpdatedAt = time.Now()
 	return u, nil
+}
+
+func (u *User) EditFlags(flags []string) (*User, error) {
+	if u.IsDeleted {
+		return nil, adminError.CannotChangeStatusOfDeletedUser()
+	}
+
+	if u.StaffRank == 1 {
+		return nil, adminError.StatusAlreadySet()
+	}
+
+	u.Flags = flags
+	u.UpdatedAt = time.Now()
+
+	return u, nil
+}
+
+func (u *User) UserHasFlag(flag string) bool {
+	for _, f := range u.Flags {
+		if f == flag {
+			return true
+		}
+	}
+
+	return false
 }

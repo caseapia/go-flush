@@ -14,6 +14,7 @@ const (
 	SetDeveloperRank     LoggerAction = "has set developer perm"
 	TriedToDeleteManager LoggerAction = "has tried to delete manager's account and action has stopped"
 	CreateRank           LoggerAction = "has created rank"
+	ChangeFlags          LoggerAction = "has changed flags"
 
 	// ! Searches
 	SearchByUsername LoggerAction = "searched by username"

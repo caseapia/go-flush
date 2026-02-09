@@ -29,6 +29,7 @@ func NewAdminModule(db *bun.DB, userRankSetter Contracts.UserRankSetter, userHan
 	}
 }
 
+// TODO: Change the router registration path to the handler, the way it works in the user method
 func (m *AdminModule) RegisterRoutes(app fiber.Router) {
 	admin := app.Group("/admin")
 
@@ -45,5 +46,6 @@ func (m *AdminModule) RegisterRoutes(app fiber.Router) {
 		admin.Put("/create", m.UserHandler.CreateUser)
 		admin.Patch("/ban/:id", m.UserHandler.BanUser)
 		admin.Delete("/unban/:id", m.UserHandler.UnbanUser)
+		admin.Patch("/flags/edit/:id", m.UserHandler.EditFlags)
 	}
 }

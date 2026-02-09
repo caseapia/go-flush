@@ -73,7 +73,7 @@ func (u *UserRankSetter) SetDeveloperRank(ctx context.Context, userID uint64, ra
 		return nil, err
 	}
 
-	if !rank.HasFlag("DEV") && (rank.Name == "None" || rank.Name == "Player") {
+	if !rank.HasFlag("DEV") && rank.Name != "None" && rank.Name != "Player" {
 		slog.WithData(slog.M{
 			"rankID": rankID,
 			"userID": userID,
