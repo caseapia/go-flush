@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	loggermodule "github.com/caseapia/goproject-flush/internal/models/logger"
@@ -10,9 +11,17 @@ import (
 
 func (l *LoggerRepository) Log(
 	ctx context.Context,
-	entry *loggermodule.ActionLog,
+	loggerType loggermodule.LoggerType,
+	entry interface{},
 ) error {
-	entry.CreatedAt = time.Now()
+	switch e := entry.(type) {
+	case *loggermodule.CommonLog:
+		e.Date = time.Now()
+	case *loggermodule.PunishmentLog:
+		e.Date = time.Now()
+	default:
+		return errors.New("unsupported log entry type")
+	}
 
 	_, err := l.db.NewInsert().
 		Model(entry).
@@ -23,7 +32,9 @@ func (l *LoggerRepository) Log(
 	}
 
 	slog.WithData(slog.M{
-		"entryData": entry,
-	}).Debugf("action add in action_logs table")
-	return err
+		"loggerType": loggerType,
+		"entryData":  entry,
+	}).Debugf("log inserted successfully")
+
+	return nil
 }

@@ -2,7 +2,6 @@ package adminUser
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -22,10 +21,14 @@ func (s *AdminUserService) SetStaffRank(ctx context.Context, userID uint64, rank
 		return nil, UserError.UserNotFound()
 	}
 
+	oldRank := u.StaffRank
+
 	u.StaffRank = rank
 	u.UpdatedAt = time.Now()
 
-	_ = s.logger.Log(ctx, 0, &userID, loggermodel.SetStaffRank, "New staff rank: "+strconv.Itoa(rank))
+	addInfo := "Rank before: " + strconv.Itoa(oldRank) + ", Rank after: " + strconv.Itoa(rank)
+
+	_ = s.logger.Log(ctx, "common", 0, &userID, loggermodel.SetStaffRank, addInfo)
 
 	return u, s.repo.Update(ctx, u)
 }
@@ -35,10 +38,19 @@ func (s *AdminUserService) SetDeveloperRank(ctx context.Context, userID uint64, 
 	if err != nil {
 		return nil, err
 	}
+
+	if u == nil {
+		return nil, UserError.UserNotFound()
+	}
+
+	oldRank := u.DeveloperRank
+
 	u.DeveloperRank = rank
 	u.UpdatedAt = time.Now()
 
-	_ = s.logger.Log(ctx, 0, &userID, loggermodel.SetDeveloperRank, "New developer rank: "+strconv.Itoa(rank))
+	addInfo := "Rank before: " + strconv.Itoa(oldRank) + ", Rank after: " + strconv.Itoa(rank)
+
+	_ = s.logger.Log(ctx, "common", 0, &userID, loggermodel.SetDeveloperRank, addInfo)
 
 	return u, s.repo.Update(ctx, u)
 }
@@ -49,10 +61,18 @@ func (s *AdminUserService) EditFlags(ctx context.Context, userID uint64, flags [
 		return nil, err
 	}
 
+	if u == nil {
+		return nil, UserError.UserNotFound()
+	}
+
+	oldFlags := u.Flags
+
 	u.Flags = flags
 	u.UpdatedAt = time.Now()
 
-	_ = s.logger.Log(ctx, 0, &userID, loggermodel.ChangeFlags, fmt.Sprintf("New flags: %v", strings.Join(flags, ",")))
+	addInfo := "Flags before: " + strings.Join(oldFlags, ",") + ", Flags after: " + strings.Join(flags, ",")
+
+	_ = s.logger.Log(ctx, "common", 0, &userID, loggermodel.ChangeFlags, addInfo)
 
 	return u, s.repo.Update(ctx, u)
 }

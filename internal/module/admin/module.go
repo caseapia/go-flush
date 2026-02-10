@@ -17,8 +17,13 @@ type AdminModule struct {
 	UserHandler  *adminUser.Handler
 }
 
-func NewAdminModule(db *bun.DB, userRankSetter Contracts.UserRankSetter, userHandler *adminUser.Handler, logger *logger.LoggerService) *AdminModule {
-	ranksRepo := AdminRanksRepository.NewRanksRepository(db)
+func NewAdminModule(
+	mainDB *bun.DB,
+	userRankSetter Contracts.UserRankSetter,
+	userHandler *adminUser.Handler,
+	logger *logger.LoggerService,
+) *AdminModule {
+	ranksRepo := AdminRanksRepository.NewRanksRepository(mainDB)
 	ranksSrv := AdminRanksService.NewRanksService(ranksRepo, userRankSetter, logger)
 	ranksHandler := adminRanks.NewHandler(ranksSrv)
 
@@ -29,23 +34,10 @@ func NewAdminModule(db *bun.DB, userRankSetter Contracts.UserRankSetter, userHan
 	}
 }
 
-// TODO: Change the router registration path to the handler, the way it works in the user method
 func (m *AdminModule) RegisterRoutes(app fiber.Router) {
-	admin := app.Group("/admin")
+	m.RanksHandler.RegisterRoutes(app)
 
-	// Ranks
-	admin.Get("/ranks", m.RanksHandler.GetRanksList)
-	admin.Post("/rank/create", m.RanksHandler.CreateRank)
-	admin.Post("/setstaff/:id", m.RanksHandler.SetStaffRank)
-	admin.Post("/setdeveloper/:id", m.RanksHandler.SetDeveloperRank)
-
-	// User actions
 	if m.UserHandler != nil {
-		admin.Delete("/delete/:id", m.UserHandler.DeleteUser)
-		admin.Put("/restore/:id", m.UserHandler.RestoreUser)
-		admin.Put("/create", m.UserHandler.CreateUser)
-		admin.Patch("/ban/:id", m.UserHandler.BanUser)
-		admin.Delete("/unban/:id", m.UserHandler.UnbanUser)
-		admin.Patch("/flags/edit/:id", m.UserHandler.EditFlags)
+		m.UserHandler.RegisterRoutes(app)
 	}
 }

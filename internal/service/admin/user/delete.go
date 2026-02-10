@@ -19,13 +19,13 @@ func (s *AdminUserService) DeleteUser(ctx context.Context, id uint64) (*models.U
 	}
 
 	if r.HasFlag("MANAGER") {
-		_ = s.logger.Log(ctx, 0, &id, loggermodel.TriedToDeleteManager)
+		_ = s.logger.Log(ctx, "common", 0, &id, loggermodel.TriedToDeleteManager)
 
 		return nil, AdminErrorConstructor.CantDeleteManager()
 	}
 
 	if u.IsDeleted {
-		_ = s.logger.Log(ctx, 0, &id, loggermodel.HardDelete)
+		_ = s.logger.Log(ctx, "common", 0, &id, loggermodel.HardDelete)
 
 		if err := s.adminUser.Delete(ctx, u); err != nil {
 			return nil, err
@@ -41,7 +41,7 @@ func (s *AdminUserService) DeleteUser(ctx context.Context, id uint64) (*models.U
 		return nil, err
 	}
 
-	_ = s.logger.Log(ctx, 0, &id, loggermodel.SoftDelete)
+	_ = s.logger.Log(ctx, "common", 0, &id, loggermodel.SoftDelete)
 
 	return u, nil
 }
@@ -63,7 +63,7 @@ func (s *AdminUserService) RestoreUser(ctx context.Context, id uint64) (*models.
 		return nil, err
 	}
 
-	_ = s.logger.Log(ctx, 0, &id, loggermodel.RestoreUser)
+	_ = s.logger.Log(ctx, "common", 0, &id, loggermodel.RestoreUser)
 
 	return u, nil
 }

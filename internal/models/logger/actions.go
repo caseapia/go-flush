@@ -1,24 +1,31 @@
 package logger
 
-type LoggerAction string
+type UserAction string
+type UserPunishment string
+type CommonAction string
 
+// ! User punishments
 const (
-	// ! Admin actions
-	Ban                  LoggerAction = "has banned"
-	Unban                LoggerAction = "has unbanned"
-	Create               LoggerAction = "has created"
-	SoftDelete           LoggerAction = "has soft-deleted"
-	HardDelete           LoggerAction = "has hard-deleted"
-	RestoreUser          LoggerAction = "has restored"
-	SetStaffRank         LoggerAction = "has set admin perm"
-	SetDeveloperRank     LoggerAction = "has set developer perm"
-	TriedToDeleteManager LoggerAction = "has tried to delete manager's account and action has stopped"
-	CreateRank           LoggerAction = "has created rank"
-	ChangeFlags          LoggerAction = "has changed flags"
+	Ban   UserPunishment = "has banned"
+	Unban UserPunishment = "has unbanned"
+)
 
-	// ! Searches
-	SearchByUsername LoggerAction = "searched by username"
-	SearchByUserID   LoggerAction = "searched by user ID"
-	SearchByAllUsers LoggerAction = "searched all users"
-	SearchLogs       LoggerAction = "searched logs"
+// ! Common actions
+const (
+	CreateRank CommonAction = "has created rank"
+
+	SearchByUsername CommonAction = "searched by username"
+	SearchByUserID   CommonAction = "searched by user ID"
+	SearchByAllUsers CommonAction = "searched all users"
+	SearchLogs       CommonAction = "searched logs"
+
+	SetStaffRank     UserAction = "has set admin perm"
+	SetDeveloperRank UserAction = "has set developer perm"
+	RestoreUser      UserAction = "has restored"
+	Create           UserAction = "has created"
+	ChangeFlags      UserAction = "has changed flags"
+
+	SoftDelete           UserPunishment = "has soft-deleted"
+	HardDelete           UserPunishment = "has hard-deleted"
+	TriedToDeleteManager UserPunishment = "has tried to delete manager's account and action has stopped"
 )

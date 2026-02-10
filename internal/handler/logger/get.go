@@ -7,7 +7,9 @@ import (
 )
 
 func (l *Handler) GetLogs(c *fiber.Ctx) error {
-	logs, err := l.service.GetLogs(c.UserContext())
+	logType := c.Params("type")
+
+	logs, err := l.service.GetLogs(c.UserContext(), logType)
 
 	if err != nil {
 		log.Println("Error getting logs:", err)

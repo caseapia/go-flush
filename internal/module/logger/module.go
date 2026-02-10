@@ -3,23 +3,25 @@ package logger
 import (
 	"github.com/caseapia/goproject-flush/internal/handler/logger"
 	loggerhandler "github.com/caseapia/goproject-flush/internal/handler/logger"
-	loggerRepo "github.com/caseapia/goproject-flush/internal/repository/logger"
-	userRepo "github.com/caseapia/goproject-flush/internal/repository/user"
-	loggerService "github.com/caseapia/goproject-flush/internal/service/logger"
+	loggerrepo "github.com/caseapia/goproject-flush/internal/repository/logger"
+	userrepo "github.com/caseapia/goproject-flush/internal/repository/user"
+	loggerservice "github.com/caseapia/goproject-flush/internal/service/logger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/uptrace/bun"
 )
 
 type LoggerModule struct {
 	Handler *logger.Handler
-	Service *loggerService.LoggerService
+	Service *loggerservice.LoggerService
 }
 
-func NewLoggerModule(db *bun.DB) *LoggerModule {
-	lRepo := loggerRepo.NewLoggerRepository(db)
-	uRepo := userRepo.NewUserRepository(db)
+func NewLoggerModule(
+	logsDB *bun.DB,
+	userRepo *userrepo.UserRepository,
+) *LoggerModule {
 
-	srv := loggerService.NewLoggerService(lRepo, uRepo)
+	lrepo := loggerrepo.NewLoggerRepository(logsDB)
+	srv := loggerservice.NewLoggerService(lrepo, userRepo)
 	h := logger.NewHandler(srv)
 
 	return &LoggerModule{

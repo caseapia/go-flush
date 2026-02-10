@@ -1,13 +1,13 @@
 package logger
 
-import (
-	"github.com/uptrace/bun"
-)
+import "github.com/uptrace/bun"
 
 type LoggerRepository struct {
 	db *bun.DB
 }
 
 func NewLoggerRepository(db *bun.DB) *LoggerRepository {
-	return &LoggerRepository{db: db}
+	return &LoggerRepository{
+		db: db,
+	}
 }

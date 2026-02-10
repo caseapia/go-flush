@@ -14,7 +14,7 @@ type User struct {
 	IsDeleted     bool       `bun:"is_deleted" json:"isDeleted,omitempty"`
 	StaffRank     int        `bun:"staff_rank,default:1" json:"staffRank"`
 	DeveloperRank int        `bun:"developer_rank,default:1" json:"developerRank"`
-	Flags         []string   `bun:"staff_flags" json:"staff_flags"`
+	Flags         []string   `bun:"staff_flags" json:"staffFlags"`
 	CreatedAt     time.Time  `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
 	UpdatedAt     time.Time  `bun:"updated_at,notnull,default:current_timestamp" json:"updatedAt"`
 	DeletedAt     *time.Time `bun:"deleted_at,nullzero" json:"-"`
