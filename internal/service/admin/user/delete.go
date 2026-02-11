@@ -8,6 +8,7 @@ import (
 	models "github.com/caseapia/goproject-flush/internal/models/user"
 	AdminErrorConstructor "github.com/caseapia/goproject-flush/internal/pkg/utils/error/constructor/admin"
 	UserError "github.com/caseapia/goproject-flush/internal/pkg/utils/error/constructor/user"
+
 )
 
 func (s *AdminUserService) DeleteUser(ctx context.Context, id uint64) (*models.User, error) {
@@ -19,13 +20,13 @@ func (s *AdminUserService) DeleteUser(ctx context.Context, id uint64) (*models.U
 	}
 
 	if r.HasFlag("MANAGER") {
-		_ = s.logger.Log(ctx, "common", 0, &id, loggermodel.TriedToDeleteManager)
+		_ = s.logger.Log(ctx, loggermodel.CommonLogger, 0, &id, loggermodel.TriedToDeleteManager)
 
 		return nil, AdminErrorConstructor.CantDeleteManager()
 	}
 
 	if u.IsDeleted {
-		_ = s.logger.Log(ctx, "common", 0, &id, loggermodel.HardDelete)
+		_ = s.logger.Log(ctx, loggermodel.CommonLogger, 0, &id, loggermodel.HardDelete)
 
 		if err := s.adminUser.HardDelete(ctx, id); err != nil {
 			return nil, err
@@ -33,6 +34,8 @@ func (s *AdminUserService) DeleteUser(ctx context.Context, id uint64) (*models.U
 
 		return nil, nil
 	}
+
+	_ = s.logger.Log(ctx, loggermodel.CommonLogger, 0, &id, loggermodel.SoftDelete)
 
 	u.IsDeleted = true
 	u.UpdatedAt = time.Now()
@@ -44,8 +47,6 @@ func (s *AdminUserService) DeleteUser(ctx context.Context, id uint64) (*models.U
 	if err := s.repo.Update(ctx, u); err != nil {
 		return nil, err
 	}
-
-	_ = s.logger.Log(ctx, "common", 0, &id, loggermodel.SoftDelete)
 
 	return u, nil
 }
@@ -60,14 +61,14 @@ func (s *AdminUserService) RestoreUser(ctx context.Context, id uint64) (*models.
 		return u, UserError.UserAlreadyExists()
 	}
 
+	_ = s.logger.Log(ctx, loggermodel.CommonLogger, 0, &id, loggermodel.RestoreUser)
+
 	u.IsDeleted = false
 	u.UpdatedAt = time.Now()
 
 	if err := s.repo.Update(ctx, u); err != nil {
 		return nil, err
 	}
-
-	_ = s.logger.Log(ctx, "common", 0, &id, loggermodel.RestoreUser)
 
 	return u, nil
 }

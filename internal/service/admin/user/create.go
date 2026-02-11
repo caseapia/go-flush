@@ -29,7 +29,7 @@ func (s *AdminUserService) CreateUser(ctx *fiber.Ctx, adminID int, name string) 
 		return nil, err
 	}
 
-	_ = s.logger.Log(ctx.UserContext(), "common", uint64(adminID), nil, loggermodel.Create, "as "+name)
+	_ = s.logger.Log(ctx.UserContext(), loggermodel.CommonLogger, uint64(adminID), nil, loggermodel.Create, "as "+name)
 
 	return user, nil
 }

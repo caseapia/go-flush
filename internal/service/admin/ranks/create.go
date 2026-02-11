@@ -35,7 +35,7 @@ func (s *RanksService) CreateRank(ctx *fiber.Ctx, adminID uint64, rankName strin
 
 	addInfo := "with name: " + rankName + ", with color: " + rankColor + "with flags: " + strings.Join(rankFlags, ", ")
 
-	_ = s.logger.Log(ctx.UserContext(), "common", adminID, nil, logger.CreateRank, addInfo)
+	_ = s.logger.Log(ctx.UserContext(), logger.CommonLogger, adminID, nil, logger.CreateRank, addInfo)
 
 	return rank, nil
 }

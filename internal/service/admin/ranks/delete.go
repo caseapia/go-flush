@@ -19,7 +19,7 @@ func (s *RanksService) DeleteRank(ctx *fiber.Ctx, id int) (bool, error) {
 
 	addInfo := "with ID: " + strconv.FormatInt(r.ID, 10) + ", with name: " + r.Name
 
-	_ = s.logger.Log(ctx.UserContext(), "common", 0, nil, logger.DeleteRank, addInfo)
+	_ = s.logger.Log(ctx.UserContext(), logger.CommonLogger, 0, nil, logger.DeleteRank, addInfo)
 
 	if err := s.ranksRepo.DeleteRank(ctx.UserContext(), r); err != nil {
 		return false, err

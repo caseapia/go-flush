@@ -13,11 +13,11 @@ func (s *UserService) GetUser(ctx context.Context, id uint64) (*models.User, err
 	if err != nil {
 		return nil, err
 	}
-	if u == nil || u.IsDeleted {
+	if u == nil {
 		return nil, UserError.UserNotFound()
 	}
 
-	_ = s.logger.Log(ctx, "common", 0, &id, loggermodule.SearchByUserID)
+	_ = s.logger.Log(ctx, loggermodule.CommonLogger, 0, &id, loggermodule.SearchByUserID)
 
 	return u, nil
 }
@@ -27,8 +27,6 @@ func (s *UserService) GetUsersList(ctx context.Context) ([]models.User, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	_ = s.logger.Log(ctx, "common", 0, nil, loggermodule.SearchByAllUsers)
 
 	return u, nil
 }

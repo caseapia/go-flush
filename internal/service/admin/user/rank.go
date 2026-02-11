@@ -28,8 +28,14 @@ func (s *AdminUserService) SetStaffRank(ctx context.Context, userID uint64, rank
 
 	addInfo := "Rank before: " + strconv.Itoa(oldRank) + ", Rank after: " + strconv.Itoa(rank)
 
-	_ = s.logger.Log(ctx, "common", 0, &userID, loggermodel.SetStaffRank, addInfo)
-
+	_ = s.logger.Log(
+		ctx,
+		loggermodel.CommonLogger,
+		0,
+		&userID,
+		loggermodel.SetStaffRank,
+		addInfo,
+	)
 	return u, s.repo.Update(ctx, u)
 }
 
@@ -50,8 +56,14 @@ func (s *AdminUserService) SetDeveloperRank(ctx context.Context, userID uint64, 
 
 	addInfo := "Rank before: " + strconv.Itoa(oldRank) + ", Rank after: " + strconv.Itoa(rank)
 
-	_ = s.logger.Log(ctx, "common", 0, &userID, loggermodel.SetDeveloperRank, addInfo)
-
+	_ = s.logger.Log(
+		ctx,
+		loggermodel.CommonLogger,
+		0,
+		&userID,
+		loggermodel.SetDeveloperRank,
+		addInfo,
+	)
 	return u, s.repo.Update(ctx, u)
 }
 
@@ -72,7 +84,7 @@ func (s *AdminUserService) EditFlags(ctx context.Context, userID uint64, flags [
 
 	addInfo := "Flags before: " + strings.Join(oldFlags, ",") + ", Flags after: " + strings.Join(flags, ",")
 
-	_ = s.logger.Log(ctx, "common", 0, &userID, loggermodel.ChangeFlags, addInfo)
+	_ = s.logger.Log(ctx, loggermodel.CommonLogger, 0, &userID, loggermodel.ChangeFlags, addInfo)
 
 	return u, s.repo.Update(ctx, u)
 }

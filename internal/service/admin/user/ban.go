@@ -39,7 +39,7 @@ func (s AdminUserService) BanUser(
 		return nil, err
 	}
 
-	_ = s.logger.Log(ctx, "punish", adminID, &userID, loggermodule.Ban, "Reason: "+reason)
+	_ = s.logger.Log(ctx, loggermodule.PunishmentLogger, adminID, &userID, loggermodule.Ban, "Reason: "+reason)
 
 	return u, nil
 }
@@ -70,7 +70,7 @@ func (s *AdminUserService) UnbanUser(
 		return nil, err
 	}
 
-	_ = s.logger.Log(ctx, "punish", adminID, &userID, loggermodule.Unban)
+	_ = s.logger.Log(ctx, loggermodule.PunishmentLogger, adminID, &userID, loggermodule.Unban)
 
 	return user, nil
 }
