@@ -1,6 +1,8 @@
 package app
 
 import (
+	"time"
+
 	"github.com/caseapia/goproject-flush/config"
 	database "github.com/caseapia/goproject-flush/internal/db"
 	"github.com/caseapia/goproject-flush/internal/handler/auth"
@@ -18,6 +20,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gookit/slog"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 func NewApp() (*fiber.App, error) {
@@ -51,8 +55,31 @@ func NewApp() (*fiber.App, error) {
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization, Cache-Control",
 	}))
 
-	app.Get("/ping", func(c *fiber.Ctx) error {
-		return c.SendString("pong")
+	app.Get("/api/ping", func(c *fiber.Ctx) error {
+		v, err := mem.VirtualMemory()
+		if err != nil {
+			return err
+		}
+
+		cpuPercent, err := cpu.Percent(time.Millisecond*100, false)
+		if err != nil {
+			return err
+		}
+
+		var cpuUsage float64
+		if len(cpuPercent) > 0 {
+			cpuUsage = cpuPercent[0]
+		}
+
+		return c.JSON(fiber.Map{
+			"status":    "pong",
+			"timestamp": time.Now().Unix(),
+			"system": fiber.Map{
+				"cpu":    cpuUsage,                    // cpu loading
+				"ram":    v.UsedPercent,               // ram loading
+				"ram_gb": v.Used / 1024 / 1024 / 1024, // gb usage
+			},
+		})
 	})
 
 	api := app.Group("/api")
@@ -76,10 +103,8 @@ func NewApp() (*fiber.App, error) {
 }
 
 func setupLogger() {
-	slog.Configure(func(l *slog.SugaredLogger) {
-		if f, ok := l.Formatter.(*slog.TextFormatter); ok {
-			f.EnableColor = true
-		}
-	})
-	slog.SetFormatter(slog.NewJSONFormatter())
+	f := slog.NewTextFormatter()
+	f.EnableColor = true
+	f.TimeFormat = "2006-01-02 15:04:05"
+	slog.SetFormatter(f)
 }
