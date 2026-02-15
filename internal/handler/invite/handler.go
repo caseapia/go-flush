@@ -3,6 +3,7 @@ package invite
 import (
 	"strconv"
 
+	"github.com/caseapia/goproject-flush/internal/middleware"
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/caseapia/goproject-flush/internal/service/invite"
 	"github.com/gofiber/fiber/v2"
@@ -78,7 +79,7 @@ func (h *Handler) DeleteInvite(c *fiber.Ctx) error {
 func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group := router.Group("/admin/invite")
 
-	group.Get("/list", h.GetInviteCodes)
-	group.Post("/create", h.CreateInvite)
-	group.Delete("/delete/:id", h.DeleteInvite)
+	group.Get("/list", middleware.RequireRankFlag("ADMIN"), h.GetInviteCodes)
+	group.Post("/create", middleware.RequireRankFlag("ADMIN"), h.CreateInvite)
+	group.Delete("/delete/:id", middleware.RequireRankFlag("LEAD"), h.DeleteInvite)
 }
