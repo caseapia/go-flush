@@ -57,15 +57,17 @@ func RequireRankFlag(flags ...string) fiber.Handler {
 
 func UpdateLastLogin(repo *mysql.Repository) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		defer func() {
-			user := c.Locals("user")
-			if user != nil {
-				u := user.(*models.User)
-				if err := repo.UpdateLastLogin(c, u.ID); err != nil {
-					slog.Warn("Failed to update last_login", "userID", u.ID, "error", err)
+		err := c.Next()
+
+		user := c.Locals("user")
+		if user != nil {
+			if u, ok := user.(*models.User); ok && u != nil {
+				if updateErr := repo.UpdateLastLogin(c, u.ID); updateErr != nil {
+					slog.Warn("Failed to update last_login", "userID", u.ID, "error", updateErr)
 				}
 			}
-		}()
-		return c.Next()
+		}
+
+		return err
 	}
 }

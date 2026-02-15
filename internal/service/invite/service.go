@@ -2,13 +2,15 @@ package invite
 
 import (
 	"context"
-	"strconv"
+	"fmt"
 	"time"
 
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/caseapia/goproject-flush/internal/service/logger"
 	inviteutils "github.com/caseapia/goproject-flush/pkg/utils/invite"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gookit/slog"
+
 )
 
 type InviteRepository interface {
@@ -16,6 +18,7 @@ type InviteRepository interface {
 	CreateInvite(ctx context.Context, invite *models.Invite) error
 	DeleteInvite(ctx context.Context, inviteID uint64) error
 	SearchInviteByCode(ctx context.Context, code string) (*models.Invite, error)
+	SearchInviteByID(ctx context.Context, id uint64) (*models.Invite, error)
 	MarkInviteAsUsed(ctx context.Context, inviteID, usedBy uint64) error
 }
 
@@ -29,7 +32,15 @@ func NewService(inviteRepo InviteRepository, logger logger.Service) *Service {
 }
 
 func (s *Service) GetInviteCodes(ctx context.Context) ([]models.InviteDTO, error) {
-	return s.inviteRepo.SearchAllInvites(ctx)
+	invites, err := s.inviteRepo.SearchAllInvites(ctx)
+	if err != nil {
+		slog.WithData(slog.M{
+			"error": err,
+		}).Error("error when fetching invite codes")
+		return nil, err
+	}
+
+	return invites, nil
 }
 
 func (s *Service) GetInviteByID(ctx context.Context, inviteID string) (*models.Invite, error) {
@@ -58,7 +69,8 @@ func (s *Service) CreateInvite(ctx context.Context, createdBy uint64) (*models.I
 		return nil, err
 	}
 
-	_ = s.logger.Log(ctx, models.CommonLogger, createdBy, nil, models.CreateInvite, invite.Code)
+	addInfo := fmt.Sprintf("ID: %v | Code: %s", invite.ID, invite.Code)
+	_ = s.logger.Log(ctx, models.CommonLogger, createdBy, nil, models.CreateInvite, addInfo)
 
 	return invite, nil
 }
@@ -90,7 +102,18 @@ func (s *Service) UseInvite(ctx context.Context, code string, userID uint64) err
 }
 
 func (s *Service) DeleteInvite(ctx context.Context, adminID uint64, inviteID uint64) error {
-	_ = s.logger.Log(ctx, models.CommonLogger, adminID, nil, models.DeleteInvite, strconv.FormatUint(inviteID, 10))
+	oldInvite, err := s.inviteRepo.SearchInviteByID(ctx, inviteID)
+	if err != nil {
+		return err
+	}
 
-	return s.inviteRepo.DeleteInvite(ctx, inviteID)
+	newErr := s.inviteRepo.DeleteInvite(ctx, inviteID)
+	if newErr != nil {
+		return newErr
+	}
+
+	addInfo := fmt.Sprintf("ID: %v | Code: %s", inviteID, oldInvite.Code)
+	_ = s.logger.Log(ctx, models.CommonLogger, adminID, nil, models.DeleteInvite, addInfo)
+
+	return newErr
 }

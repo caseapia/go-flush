@@ -28,61 +28,49 @@ func NewApp() (*fiber.App, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	mainRepo := mysqlRepo.NewRepository(dbs.Main)
 	logsRepo := mysqlRepo.NewRepository(dbs.Logs)
 
 	loggerSrv := loggerService.NewService(*logsRepo)
-
 	ranksSrv := ranksService.NewService(mainRepo, loggerSrv)
-
 	userSrv := userService.NewService(mainRepo, loggerSrv)
-
 	inviteSrv := inviteService.NewService(mainRepo, *loggerSrv)
-
 	authSrv := authService.NewService(*mainRepo)
 
-	handlers := struct {
-		auth   *auth.Handler
-		user   *user.Handler
-		invite *invite.Handler
-		logger *logger.Handler
-		ranks  *ranks.Handler
-	}{
-		auth:   auth.NewHandler(authSrv, inviteSrv),
-		user:   user.NewUserHandler(userSrv, ranksSrv),
-		invite: invite.NewHandler(inviteSrv),
-		logger: logger.NewHandler(loggerSrv),
-		ranks:  ranks.NewHandler(ranksSrv),
-	}
+	authHandler := auth.NewHandler(authSrv, inviteSrv)
+	userHandler := user.NewUserHandler(userSrv, ranksSrv)
+	inviteHandler := invite.NewHandler(inviteSrv)
+	loggerHandler := logger.NewHandler(loggerSrv)
+	ranksHandler := ranks.NewHandler(ranksSrv)
 
 	app := fiber.New()
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:3000,https://fe-go-flush.vercel.app",
+		AllowOrigins: "http://localhost:3000,https://fe-go-flush.vercel.app,http://localhost:8080",
 		AllowMethods: "GET,POST,PUT,DELETE,PATCH,OPTIONS",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization, Cache-Control",
 	}))
-
-	api := app.Group("/api", middleware.UpdateLastLogin(mainRepo))
-
-	// ! Public routes
-	handlers.auth.RegisterRoutes(api)
 
 	app.Get("/ping", func(c *fiber.Ctx) error {
 		return c.SendString("pong")
 	})
 
-	// ! Private Routes
-	private := api.Group("")
+	api := app.Group("/api")
+
+	public := api.Group("/public")
+	authHandler.RegisterRoutes(public)
+
+	private := api.Group("/private")
 	private.Use(auth.AuthMiddleware(authSrv))
+	private.Use(middleware.UpdateLastLogin(mainRepo))
 	private.Use(middleware.LoadRank(ranksSrv))
 
-	handlers.user.RegisterRoutes(private)
-	handlers.invite.RegisterRoutes(private)
-	handlers.logger.RegisterRoutes(private)
-	handlers.ranks.RegisterRoutes(private)
-	handlers.auth.RegisterPrivateRoute(private)
+	authHandler.RegisterPrivateRoute(private)
+
+	userHandler.RegisterRoutes(private)
+	inviteHandler.RegisterRoutes(private)
+	loggerHandler.RegisterRoutes(private)
+	ranksHandler.RegisterRoutes(private)
 
 	return app, nil
 }

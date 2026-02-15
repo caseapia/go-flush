@@ -11,7 +11,7 @@ func AuthMiddleware(authSrv *auth.Service) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		header := c.Get("Authorization")
 		if header == "" {
-			return fiber.NewError(fiber.StatusUnauthorized, "missing Authorization header")
+			return fiber.NewError(fiber.StatusUnauthorized, "missing Authorization header FROM AUTH MIDDLEWARE")
 		}
 
 		parts := strings.Split(header, " ")
@@ -24,6 +24,10 @@ func AuthMiddleware(authSrv *auth.Service) fiber.Handler {
 		user, claims, err := authSrv.ParseJWT(token)
 		if err != nil {
 			return fiber.NewError(fiber.StatusUnauthorized, err.Error())
+		}
+
+		if user == nil || claims == nil {
+			return fiber.NewError(fiber.StatusUnauthorized, "invalid token data")
 		}
 
 		c.Locals("user", user)

@@ -6,6 +6,7 @@ import (
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/caseapia/goproject-flush/internal/service/invite"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gookit/slog"
 )
 
 type Handler struct {
@@ -27,6 +28,9 @@ func (h *Handler) GetInviteCodes(c *fiber.Ctx) error {
 
 	invites, err := h.service.GetInviteCodes(c.UserContext())
 	if err != nil {
+		slog.WithData(slog.M{
+			"error": err,
+		}).Error("error when fetch invite codes")
 		return err
 	}
 
@@ -42,6 +46,9 @@ func (h *Handler) CreateInvite(c *fiber.Ctx) error {
 
 	newInvite, err := h.service.CreateInvite(c.Context(), user.ID)
 	if err != nil {
+		slog.WithData(slog.M{
+			"error": err,
+		}).Error("error when invitation code creation")
 		return err
 	}
 
@@ -59,6 +66,9 @@ func (h *Handler) DeleteInvite(c *fiber.Ctx) error {
 
 	err := h.service.DeleteInvite(c.Context(), sender.ID, uint64(id))
 	if err != nil {
+		slog.WithData(slog.M{
+			"error": err,
+		}).Error("error when delete invitation codes")
 		return err
 	}
 

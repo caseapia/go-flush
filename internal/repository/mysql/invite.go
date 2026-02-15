@@ -56,6 +56,21 @@ func (r *Repository) SearchInviteByCode(ctx context.Context, code string) (*mode
 	return invite, nil
 }
 
+func (r *Repository) SearchInviteByID(ctx context.Context, id uint64) (*models.Invite, error) {
+	invite := new(models.Invite)
+
+	err := r.db.NewSelect().
+		Model(invite).
+		Where("id = ?", id).
+		Limit(1).
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return invite, err
+}
+
 func (r *Repository) MarkInviteAsUsed(ctx context.Context, inviteID, usedBy uint64) error {
 	res, err := r.db.NewUpdate().
 		Model((*models.Invite)(nil)).

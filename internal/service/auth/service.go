@@ -11,6 +11,7 @@ import (
 	"github.com/caseapia/goproject-flush/pkg/utils/hash"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/gookit/slog"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -124,8 +125,21 @@ func (s *Service) ParseJWT(tokenString string) (*models.User, *utils.Claims, err
 	}
 
 	user, err := s.repository.SearchUserByID(context.Background(), claims.UserID)
-	if err != nil || user == nil || user.TokenVersion != claims.TokenVer {
+	if err != nil {
 		return nil, nil, err
+	}
+
+	if user == nil {
+		slog.WithData(slog.M{
+			"error":  err,
+			"user":   user,
+			"claims": claims,
+		}).Error("user seems to be nil on JWT Parsing")
+		return nil, nil, errors.New("user not found")
+	}
+
+	if user.TokenVersion != claims.TokenVer {
+		return nil, nil, errors.New("invalid token version")
 	}
 
 	return user, claims, nil
