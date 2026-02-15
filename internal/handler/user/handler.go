@@ -146,14 +146,16 @@ func (h *Handler) CreateUser(c *fiber.Ctx) error {
 	}
 
 	var Body struct {
-		Name string `json:"name"`
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	if err := c.BodyParser(&Body); err != nil {
 		return &fiber.Error{Code: 400, Message: "invalid request"}
 	}
 
-	newUser, err := h.service.CreateUser(c, admin.ID, Body.Name)
+	newUser, err := h.service.CreateUser(c, admin.ID, Body.Name, Body.Email, Body.Password)
 	if err != nil {
 		return err
 	}
@@ -280,8 +282,9 @@ func (h *Handler) ChangeUser(c *fiber.Ctx) error {
 	}
 
 	var input struct {
-		Name  *string `json:"name"`
-		Email *string `json:"email"`
+		Name     *string `json:"name"`
+		Email    *string `json:"email"`
+		Password *string `json:"password"`
 	}
 
 	if err := c.BodyParser(&input); err != nil {
@@ -294,7 +297,17 @@ func (h *Handler) ChangeUser(c *fiber.Ctx) error {
 		}
 	}
 
-	u, err := h.service.ChangeUser(c.UserContext(), sender.ID, uint64(userID), input.Name, input.Email)
+	if input.Password != nil {
+		if len(*input.Password) <= 6 {
+			return fiber.NewError(fiber.StatusBadRequest, "new password is too short")
+		}
+	}
+
+	slog.WithData(slog.M{
+		"data_body": input,
+	}).Debug("received data")
+
+	u, err := h.service.ChangeUser(c.UserContext(), sender.ID, uint64(userID), input.Name, input.Email, input.Password)
 	if err != nil {
 		return err
 	}
@@ -318,5 +331,5 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	groupAdmin.Patch("/rank/staff/:id", middleware.RequireRankFlag("STAFFMANAGEMENT"), h.SetStaffRank)
 	groupAdmin.Patch("/rank/developer/:id", middleware.RequireRankFlag("STAFFMANAGEMENT"), h.SetDeveloperRank)
 	groupAdmin.Get("/:id", middleware.RequireRankFlag("ADMIN"), h.GetUserPrivate)
-	groupAdmin.Patch("/edit/:id", middleware.RequireRankFlag("SENIOR"), h.ChangeUser)
+	groupAdmin.Patch("/edit/:id", middleware.RequireRankFlag("MANAGER"), h.ChangeUser)
 }

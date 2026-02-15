@@ -85,17 +85,16 @@ func (r *Repository) SoftDelete(ctx context.Context, u *models.User) error {
 	return err
 }
 
-func (r *Repository) ChangeUserData(ctx context.Context, u *models.User, updateName bool, updateEmail bool) error {
-	if updateName && updateEmail {
-		return nil
-	}
-
+func (r *Repository) ChangeUserData(ctx context.Context, u *models.User, updateName, updateEmail, updatePassword bool) error {
 	var conditions []string
 	if updateName {
 		conditions = append(conditions, "name")
 	}
 	if updateEmail {
 		conditions = append(conditions, "email")
+	}
+	if updatePassword {
+		conditions = append(conditions, "password")
 	}
 
 	for _, col := range conditions {
@@ -105,6 +104,9 @@ func (r *Repository) ChangeUserData(ctx context.Context, u *models.User, updateN
 		}
 		if col == "email" {
 			val = u.Email
+		}
+		if col == "password" {
+			val = u.Password
 		}
 
 		exists, err := r.db.NewSelect().
@@ -116,8 +118,8 @@ func (r *Repository) ChangeUserData(ctx context.Context, u *models.User, updateN
 		if err != nil {
 			return err
 		}
-		if exists {
-			fiber.NewError(fiber.StatusConflict, "User with this "+col+" already exists")
+		if exists && col != "password" {
+			return fiber.NewError(fiber.StatusConflict, "User with this "+col+" already exists")
 		}
 	}
 
@@ -129,24 +131,15 @@ func (r *Repository) ChangeUserData(ctx context.Context, u *models.User, updateN
 	if updateEmail {
 		query.Column("email")
 	}
+	if updatePassword {
+		query.Column("password")
+	}
 
-	if !updateName && !updateEmail {
+	if !updateName && !updateEmail && !updatePassword {
 		return nil
 	}
 
 	_, err := query.Exec(ctx)
-	return err
-}
-
-func (r *Repository) ChangePassword(ctx context.Context, u *models.User, newPassword string) error {
-	u.Password = newPassword
-
-	_, err := r.db.NewUpdate().
-		Model(u).
-		Column("password").
-		WherePK().
-		Exec(ctx)
-
 	return err
 }
 

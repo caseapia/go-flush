@@ -36,6 +36,7 @@ const (
 	CreateInvite         Action = "has created invite code"
 	DeleteInvite         Action = "has deleted invite code"
 	ChangeUserData       Action = "has changed user's data"
+	ChangeUserPassword   Action = "has changed user's password"
 	EditRank             Action = "has edited rank"
 )
 

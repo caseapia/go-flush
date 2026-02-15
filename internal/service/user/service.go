@@ -8,6 +8,7 @@ import (
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gookit/slog"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Logger interface {
@@ -26,7 +27,7 @@ type Repository interface {
 	CreateBan(ctx context.Context, ban *models.BanModel) error
 	GetActiveBan(ctx context.Context, userID uint64) (*models.BanModel, error)
 	DeleteBan(ctx context.Context, userID uint64) error
-	ChangeUserData(ctx context.Context, u *models.User, updateName bool, updateEmail bool) error
+	ChangeUserData(ctx context.Context, u *models.User, updateName, updateEmail, updatePassword bool) error
 
 	SearchRankByID(ctx context.Context, id int) (*models.RankStructure, error)
 	SetStaffRank(ctx context.Context, userID uint64, rankID int) (*models.User, error)
@@ -153,7 +154,7 @@ func (s *Service) UnbanUser(ctx context.Context, adminID, userID uint64) (*model
 	return user, nil
 }
 
-func (s *Service) CreateUser(ctx *fiber.Ctx, adminID uint64, name string) (*models.User, error) {
+func (s *Service) CreateUser(ctx *fiber.Ctx, adminID uint64, name, email, password string) (*models.User, error) {
 	existing, err := s.repo.SearchUserByName(ctx.UserContext(), name)
 	if err != nil {
 		return nil, err
@@ -163,12 +164,19 @@ func (s *Service) CreateUser(ctx *fiber.Ctx, adminID uint64, name string) (*mode
 		return nil, fiber.ErrBadRequest
 	}
 
-	if name == "" || len(name) < 3 || len(name) > 30 {
+	if name == "" || len(name) < 3 || len(name) > 30 || len(password) < 6 {
 		return nil, fiber.ErrBadRequest
 	}
 
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
 	user := &models.User{
-		Name: name,
+		Name:     name,
+		Email:    email,
+		Password: string(hash),
 	}
 
 	if err := s.repo.CreateUser(ctx.UserContext(), user); err != nil {
@@ -321,12 +329,21 @@ func (s *Service) SetDeveloperRank(ctx context.Context, adminID uint64, userId u
 	return setRank, nil
 }
 
-func (s *Service) ChangeUser(ctx context.Context, adminID uint64, userID uint64, name *string, email *string) (*models.User, error) {
+func (s *Service) ChangeUser(ctx context.Context, adminID uint64, userID uint64, name *string, email *string, password *string) (*models.User, error) {
 	u, err := s.repo.SearchUserByID(ctx, userID)
 	if err != nil {
-		return nil, fiber.NewError(fiber.StatusNotFound, "User not found")
+		return nil, fiber.NewError(fiber.StatusNotFound, "user not found")
 	}
 
+	var hash []byte
+	if password != nil {
+		var genErr error
+		hash, genErr = bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
+		if genErr != nil {
+			return nil, genErr
+		}
+		u.Password = string(hash)
+	}
 	oldInfo := fmt.Sprintf("Name: %s, Email: %s", u.Name, u.Email)
 
 	if name != nil {
@@ -335,16 +352,23 @@ func (s *Service) ChangeUser(ctx context.Context, adminID uint64, userID uint64,
 	if email != nil {
 		u.Email = *email
 	}
+	if password != nil {
+		u.Password = string(hash)
+	}
 
-	err = s.repo.ChangeUserData(ctx, u, name != nil, email != nil)
+	err = s.repo.ChangeUserData(ctx, u, name != nil, email != nil, hash != nil)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	newInfo := fmt.Sprintf("Name: %s, Email: %s", u.Name, u.Email)
-	addInfo := fmt.Sprintf("Before: %s\nAfter: %s", oldInfo, newInfo)
 
-	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserData, addInfo)
+	if password == nil {
+		addInfo := fmt.Sprintf("Before: %s\nAfter: %s", oldInfo, newInfo)
+		_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserData, addInfo)
+	} else {
+		_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserPassword)
+	}
 
 	return u, nil
 }
