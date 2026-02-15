@@ -13,7 +13,7 @@ import (
 )
 
 type Logger interface {
-	Log(ctx context.Context, loggerType models.LoggerType, adminID uint64, userID *uint64, action interface{}, additional ...string) error
+	Log(ctx context.Context, loggerType models.LoggerType, adminID uint64, userID *uint64, action interface{}, additional ...string)
 }
 
 type Repository interface {
@@ -73,7 +73,7 @@ func (s *Service) CreateRank(ctx *fiber.Ctx, adminID uint64, rankName string, ra
 
 	addInfo := "with name: " + rankName + ", with color: " + rankColor + "with flags: " + strings.Join(rankFlags, ", ")
 
-	_ = s.logger.Log(ctx.UserContext(), models.CommonLogger, adminID, nil, models.CreateRank, addInfo)
+	s.logger.Log(ctx.UserContext(), models.CommonLogger, adminID, nil, models.CreateRank, addInfo)
 
 	return rank, nil
 }
@@ -106,7 +106,7 @@ func (s *Service) DeleteRank(ctx *fiber.Ctx, adminID uint64, id int) (bool, erro
 
 	addInfo := "with ID: " + strconv.FormatInt(r.ID, 10) + ", with name: " + r.Name
 
-	_ = s.logger.Log(ctx.UserContext(), models.CommonLogger, 0, nil, models.DeleteRank, addInfo)
+	s.logger.Log(ctx.UserContext(), models.CommonLogger, 0, nil, models.DeleteRank, addInfo)
 
 	return true, nil
 }
@@ -147,7 +147,7 @@ func (s *Service) EditRank(ctx context.Context, sender uint64, rank *models.Rank
 	newInfo := fmt.Sprintf("Name: %s, Color: %s, Flags: %v", updatedRank.Name, updatedRank.Color, newFlags)
 
 	addInfo := "Before: " + oldInfo + "\nAfter: " + newInfo
-	_ = s.logger.Log(ctx, models.CommonLogger, sender, nil, models.EditRank, addInfo)
+	s.logger.Log(ctx, models.CommonLogger, sender, nil, models.EditRank, addInfo)
 
 	return updatedRank, nil
 }

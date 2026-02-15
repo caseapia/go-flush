@@ -10,6 +10,7 @@ import (
 	inviteutils "github.com/caseapia/goproject-flush/pkg/utils/invite"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gookit/slog"
+
 )
 
 type InviteRepository interface {
@@ -69,7 +70,7 @@ func (s *Service) CreateInvite(ctx context.Context, createdBy uint64) (*models.I
 	}
 
 	addInfo := fmt.Sprintf("ID: %v\nCode: %s", invite.ID, invite.Code)
-	_ = s.logger.Log(ctx, models.CommonLogger, createdBy, nil, models.CreateInvite, addInfo)
+	s.logger.Log(ctx, models.CommonLogger, createdBy, nil, models.CreateInvite, addInfo)
 
 	return invite, nil
 }
@@ -112,7 +113,7 @@ func (s *Service) DeleteInvite(ctx context.Context, adminID uint64, inviteID uin
 	}
 
 	addInfo := fmt.Sprintf("ID: %v\nCode: %s", inviteID, oldInvite.Code)
-	_ = s.logger.Log(ctx, models.CommonLogger, adminID, nil, models.DeleteInvite, addInfo)
+	s.logger.Log(ctx, models.CommonLogger, adminID, nil, models.DeleteInvite, addInfo)
 
 	return newErr
 }

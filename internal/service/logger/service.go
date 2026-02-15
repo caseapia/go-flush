@@ -2,11 +2,11 @@ package logger
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/caseapia/goproject-flush/internal/repository/mysql"
+	"github.com/gookit/slog"
 )
 
 type Service struct {
@@ -32,7 +32,7 @@ func (s *Service) Log(
 	userID *uint64,
 	action interface{},
 	additional ...string,
-) error {
+) {
 	var addInfo *string
 	if len(additional) > 0 {
 		addInfo = &additional[0]
@@ -49,25 +49,31 @@ func (s *Service) Log(
 	case models.PunishmentLogger:
 		act, ok := action.(models.Action)
 		if !ok {
-			return fmt.Errorf("expected models.Action for PunishmentLogger, got %T", action)
+			slog.WithData(slog.M{
+				"action": action,
+			}).Error("expected models.Action for PunishmentLogger")
 		}
 		base.Action = act
 
-		return s.repo.SavePunishmentLog(ctx, &models.PunishmentLog{
+		s.repo.SavePunishmentLog(ctx, &models.PunishmentLog{
 			BaseLog: base,
 		})
 
 	case models.CommonLogger:
 		act, ok := action.(models.Action)
 		if !ok {
-			return fmt.Errorf("expected models.Action for CommonLogger, got %T", action)
+			slog.WithData(slog.M{
+				"action": action,
+			}).Error("expected models.Action for CommonLogger")
 		}
 		base.Action = act
-		return s.repo.SaveCommonLog(ctx, &models.CommonLog{
+		s.repo.SaveCommonLog(ctx, &models.CommonLog{
 			BaseLog: base,
 		})
 
 	default:
-		return fmt.Errorf("unknown logger type: %s", loggerType)
+		slog.WithData(slog.M{
+			"loggerType": loggerType,
+		}).Error("unknown logger type")
 	}
 }

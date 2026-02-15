@@ -12,7 +12,7 @@ import (
 )
 
 type Logger interface {
-	Log(ctx context.Context, loggerType models.LoggerType, adminID uint64, userID *uint64, action interface{}, additional ...string) error
+	Log(ctx context.Context, loggerType models.LoggerType, adminID uint64, userID *uint64, action interface{}, additional ...string)
 }
 
 type Repository interface {
@@ -59,7 +59,7 @@ func (s *Service) SearchUser(ctx context.Context, adminID uint64, id uint64) (*m
 	user.ActiveBan = ban
 
 	if id != adminID {
-		_ = s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.SearchByUserID)
+		s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.SearchByUserID)
 	}
 
 	return user, nil
@@ -124,7 +124,7 @@ func (s *Service) BanUser(ctx context.Context, adminID, userID uint64, unbanDate
 	}
 
 	addInfo := fmt.Sprintf("reason: %s\nuntil: %s", reason, unbanDate.String())
-	_ = s.logger.Log(ctx, models.PunishmentLogger, adminID, &userID, models.Ban, addInfo)
+	s.logger.Log(ctx, models.PunishmentLogger, adminID, &userID, models.Ban, addInfo)
 
 	user.ActiveBan = ban
 	return user, nil
@@ -149,7 +149,7 @@ func (s *Service) UnbanUser(ctx context.Context, adminID, userID uint64) (*model
 	user.ActiveBanID = nil
 	user.ActiveBan = nil
 
-	_ = s.logger.Log(ctx, models.PunishmentLogger, adminID, &userID, models.Unban)
+	s.logger.Log(ctx, models.PunishmentLogger, adminID, &userID, models.Unban)
 
 	return user, nil
 }
@@ -183,7 +183,7 @@ func (s *Service) CreateUser(ctx *fiber.Ctx, adminID uint64, name, email, passwo
 		return nil, err
 	}
 
-	_ = s.logger.Log(ctx.UserContext(), models.CommonLogger, uint64(adminID), nil, models.Create, "with nickname "+name)
+	s.logger.Log(ctx.UserContext(), models.CommonLogger, uint64(adminID), nil, models.Create, "with nickname "+name)
 
 	return user, nil
 }
@@ -197,13 +197,13 @@ func (s *Service) DeleteUser(ctx context.Context, adminID uint64, id uint64) (*m
 	}
 
 	if r.HasFlag("MANAGER") {
-		_ = s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.TriedToDeleteManager)
+		s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.TriedToDeleteManager)
 
 		return nil, fiber.ErrForbidden
 	}
 
 	if u.IsDeleted {
-		_ = s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.HardDelete)
+		s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.HardDelete)
 
 		if err := s.repo.HardDelete(ctx, id); err != nil {
 			return nil, err
@@ -212,7 +212,7 @@ func (s *Service) DeleteUser(ctx context.Context, adminID uint64, id uint64) (*m
 		return nil, nil
 	}
 
-	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.SoftDelete)
+	s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.SoftDelete)
 
 	u.IsDeleted = true
 	u.UpdatedAt = time.Now()
@@ -238,7 +238,7 @@ func (s *Service) RestoreUser(ctx context.Context, adminID uint64, id uint64) (*
 		return u, fiber.ErrBadRequest
 	}
 
-	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.RestoreUser)
+	s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.RestoreUser)
 
 	u.IsDeleted = false
 	u.UpdatedAt = time.Now()
@@ -282,7 +282,7 @@ func (s *Service) SetStaffRank(ctx context.Context, adminID uint64, userID uint6
 
 	addInfo := fmt.Sprintf("Before: %s\nAfter: %s (%d)", oldRankName, newRank.Name, newRank.ID)
 
-	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.SetStaffRank, addInfo)
+	s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.SetStaffRank, addInfo)
 
 	return updatedUser, nil
 }
@@ -324,7 +324,7 @@ func (s *Service) SetDeveloperRank(ctx context.Context, adminID uint64, userId u
 
 	addInfo := fmt.Sprintf("Before: %s\nAfter: %s (%d)", oldRankInfo, r.Name, r.ID)
 
-	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userId, models.SetDeveloperRank, addInfo)
+	s.logger.Log(ctx, models.CommonLogger, adminID, &userId, models.SetDeveloperRank, addInfo)
 
 	return setRank, nil
 }
@@ -365,9 +365,9 @@ func (s *Service) ChangeUser(ctx context.Context, adminID uint64, userID uint64,
 
 	if password == nil {
 		addInfo := fmt.Sprintf("Before: %s\nAfter: %s", oldInfo, newInfo)
-		_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserData, addInfo)
+		s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserData, addInfo)
 	} else {
-		_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserPassword)
+		s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserPassword)
 	}
 
 	return u, nil
