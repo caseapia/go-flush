@@ -122,7 +122,8 @@ func (s *Service) BanUser(ctx context.Context, adminID, userID uint64, unbanDate
 		return nil, err
 	}
 
-	_ = s.logger.Log(ctx, models.PunishmentLogger, adminID, &userID, models.Ban, "with reason: "+reason+" until: "+unbanDate.String())
+	addInfo := fmt.Sprintf("reason: %s\nuntil: %s", reason, unbanDate.String())
+	_ = s.logger.Log(ctx, models.PunishmentLogger, adminID, &userID, models.Ban, addInfo)
 
 	user.ActiveBan = ban
 	return user, nil
@@ -271,11 +272,7 @@ func (s *Service) SetStaffRank(ctx context.Context, adminID uint64, userID uint6
 		return nil, err
 	}
 
-	addInfo := fmt.Sprintf("Old: %s | New: %s (%d)",
-		oldRankName,
-		newRank.Name,
-		newRank.ID,
-	)
+	addInfo := fmt.Sprintf("Before: %s\nAfter: %s (%d)", oldRankName, newRank.Name, newRank.ID)
 
 	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.SetStaffRank, addInfo)
 
@@ -317,11 +314,7 @@ func (s *Service) SetDeveloperRank(ctx context.Context, adminID uint64, userId u
 		return nil, err
 	}
 
-	addInfo := fmt.Sprintf("Old: %s | New: %s (%d)",
-		oldRankInfo,
-		r.Name,
-		r.ID,
-	)
+	addInfo := fmt.Sprintf("Before: %s\nAfter: %s (%d)", oldRankInfo, r.Name, r.ID)
 
 	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userId, models.SetDeveloperRank, addInfo)
 
@@ -349,7 +342,7 @@ func (s *Service) ChangeUser(ctx context.Context, adminID uint64, userID uint64,
 	}
 
 	newInfo := fmt.Sprintf("Name: %s, Email: %s", u.Name, u.Email)
-	addInfo := "Old: " + oldInfo + " | New: " + newInfo
+	addInfo := fmt.Sprintf("Before: %s\nAfter: %s", oldInfo, newInfo)
 
 	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserData, addInfo)
 

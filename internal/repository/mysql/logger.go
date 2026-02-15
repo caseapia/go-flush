@@ -14,8 +14,8 @@ func (r *Repository) fetchLogs(ctx context.Context, tableName string) ([]models.
 		Model(&logs).
 		ModelTableExpr("flushproject_logs." + tableName + " AS l").
 		ColumnExpr("l.*").
-		ColumnExpr("u_admin.name AS sender_name").
-		ColumnExpr("u_target.name AS user_name").
+		ColumnExpr("COALESCE(u_admin.name, CONCAT('Deleted Account #', l.admin_id)) AS sender_name").
+		ColumnExpr(`CASE WHEN l.user_id IS NULL THEN NULL ELSE COALESCE(u_target.name, CONCAT('Deleted Account #', l.user_id)) END AS user_name`).
 		Join("LEFT JOIN flushproject.users AS u_admin ON u_admin.id = l.admin_id").
 		Join("LEFT JOIN flushproject.users AS u_target ON u_target.id = l.user_id").
 		Order("l.date DESC").

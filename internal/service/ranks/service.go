@@ -146,7 +146,7 @@ func (s *Service) EditRank(ctx context.Context, sender uint64, rank *models.Rank
 	newFlags := strings.Join(updatedRank.Flags, ", ")
 	newInfo := fmt.Sprintf("Name: %s, Color: %s, Flags: %v", updatedRank.Name, updatedRank.Color, newFlags)
 
-	addInfo := "Old: " + oldInfo + " | New: " + newInfo
+	addInfo := "Before: " + oldInfo + "\nAfter: " + newInfo
 	_ = s.logger.Log(ctx, models.CommonLogger, sender, nil, models.EditRank, addInfo)
 
 	return updatedRank, nil
