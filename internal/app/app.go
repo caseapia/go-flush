@@ -21,6 +21,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gookit/slog"
 	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
@@ -66,6 +67,11 @@ func NewApp() (*fiber.App, error) {
 			return err
 		}
 
+		uptime, err := host.Uptime()
+		if err != nil {
+			return err
+		}
+
 		var cpuUsage float64
 		if len(cpuPercent) > 0 {
 			cpuUsage = cpuPercent[0]
@@ -78,6 +84,7 @@ func NewApp() (*fiber.App, error) {
 				"cpu":    cpuUsage,                    // cpu loading
 				"ram":    v.UsedPercent,               // ram loading
 				"ram_gb": v.Used / 1024 / 1024 / 1024, // gb usage
+				"uptime": uptime,                      // server uptime
 			},
 		})
 	})
@@ -103,8 +110,8 @@ func NewApp() (*fiber.App, error) {
 }
 
 func setupLogger() {
-	f := slog.NewTextFormatter()
-	f.EnableColor = true
-	f.TimeFormat = "2006-01-02 15:04:05"
+	f := slog.NewJSONFormatter()
+	f.PrettyPrint = true
+	f.TimeFormat = "02/01/2006 15:04:05.000"
 	slog.SetFormatter(f)
 }
