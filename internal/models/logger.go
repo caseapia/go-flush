@@ -35,24 +35,29 @@ const (
 	TriedToDeleteManager Action = "has tried to delete manager's account and action has stopped"
 	CreateInvite         Action = "has created invite code"
 	DeleteInvite         Action = "has deleted invite code"
+	ChangeUserData       Action = "has changed user's data"
+	EditRank             Action = "has edited rank"
 )
 
 type BaseLog struct {
 	ID             uint64    `bun:"id,pk,autoincrement" json:"id"`
 	Date           time.Time `bun:"date,notnull" json:"date"`
-	AdminName      string    `bun:"admin_name,notnull" json:"adminName"`
 	AdminID        uint64    `bun:"admin_id,notnull" json:"adminId"`
-	UserName       *string   `bun:"user_name" json:"userName"`
 	Action         Action    `bun:"action,notnull" json:"action"`
 	UserID         *uint64   `bun:"user_id" json:"userId"`
 	AdditionalInfo *string   `bun:"additional_information" json:"additionalInfo,omitempty"`
+}
+
+type LogDTO struct {
+	BaseLog    `bun:",extend"`
+	SenderName string  `bun:"sender_name" json:"senderName"`
+	TargetName *string `bun:"user_name" json:"userName"`
 }
 
 type CommonLog struct {
 	bun.BaseModel `bun:"table:admin_common"`
 	BaseLog
 }
-
 type PunishmentLog struct {
 	bun.BaseModel `bun:"table:admin_punishments"`
 	BaseLog

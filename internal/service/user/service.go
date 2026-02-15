@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/caseapia/goproject-flush/internal/models"
@@ -25,6 +26,7 @@ type Repository interface {
 	CreateBan(ctx context.Context, ban *models.BanModel) error
 	GetActiveBan(ctx context.Context, userID uint64) (*models.BanModel, error)
 	DeleteBan(ctx context.Context, userID uint64) error
+	ChangeUserData(ctx context.Context, u *models.User, updateName bool, updateEmail bool) error
 
 	SearchRankByID(ctx context.Context, id int) (*models.RankStructure, error)
 	SetStaffRank(ctx context.Context, userID uint64, rankID int) (*models.User, error)
@@ -98,6 +100,10 @@ func (s *Service) BanUser(ctx context.Context, adminID, userID uint64, unbanDate
 		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	if user == nil || user.IsDeleted {
+		slog.WithData(slog.M{
+			"error": err,
+			"user":  user,
+		}).Error("error occured")
 		return nil, fiber.NewError(fiber.StatusNotFound, "user not found")
 	}
 	if user.UserHasFlag("NONBANNABLE") {
@@ -138,9 +144,11 @@ func (s *Service) UnbanUser(ctx context.Context, adminID, userID uint64) (*model
 		}
 	}
 
+	user.ActiveBanID = nil
+	user.ActiveBan = nil
+
 	_ = s.logger.Log(ctx, models.PunishmentLogger, adminID, &userID, models.Unban)
 
-	user.ActiveBan = nil
 	return user, nil
 }
 
@@ -186,7 +194,7 @@ func (s *Service) DeleteUser(ctx context.Context, adminID uint64, id uint64) (*m
 	}
 
 	if u.IsDeleted {
-		_ = s.logger.Log(ctx, models.CommonLogger, 0, &id, models.HardDelete)
+		_ = s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.HardDelete)
 
 		if err := s.repo.HardDelete(ctx, id); err != nil {
 			return nil, err
@@ -195,7 +203,7 @@ func (s *Service) DeleteUser(ctx context.Context, adminID uint64, id uint64) (*m
 		return nil, nil
 	}
 
-	_ = s.logger.Log(ctx, models.CommonLogger, 0, &id, models.SoftDelete)
+	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &id, models.SoftDelete)
 
 	u.IsDeleted = true
 	u.UpdatedAt = time.Now()
@@ -237,67 +245,113 @@ func (s *Service) RestoreUser(ctx context.Context, adminID uint64, id uint64) (*
 	return u, nil
 }
 
-func (s *Service) SetStaffRank(ctx context.Context, userID uint64, rankID int) (*models.User, error) {
-	r, err := s.repo.SearchRankByID(ctx, rankID)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *Service) SetStaffRank(ctx context.Context, adminID uint64, userID uint64, rankID int) (*models.User, error) {
 	u, err := s.repo.SearchUserByID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fiber.NewError(fiber.StatusNotFound, "user not found")
 	}
 
-	if r.HasFlag("DEV") {
-		slog.WithData(slog.M{
-			"rankID": rankID,
-			"userID": userID,
-			"rank":   r,
-		}).Error("Rank has DEV flag")
-
-		return u, &fiber.Error{Code: 403, Message: "developer rank cannot be issued with this function"}
+	currentRank, _ := s.repo.SearchRankByID(ctx, u.StaffRank)
+	oldRankName := "None"
+	if currentRank != nil {
+		oldRankName = fmt.Sprintf("%s (%d)", currentRank.Name, currentRank.ID)
 	}
 
-	setRank, err := s.repo.SetStaffRank(ctx, userID, rankID)
+	newRank, err := s.repo.SearchRankByID(ctx, rankID)
 	if err != nil {
-		return u, err
+		return nil, fiber.NewError(fiber.StatusNotFound, "target rank not found")
 	}
 
-	if err := s.repo.UpdateUser(ctx, setRank); err != nil {
+	if newRank.HasFlag("DEV") {
+		return nil, fiber.NewError(fiber.StatusForbidden, "developer rank cannot be issued here")
+	}
+
+	updatedUser, err := s.repo.SetStaffRank(ctx, userID, rankID)
+	if err != nil {
 		return nil, err
 	}
 
-	return setRank, nil
+	addInfo := fmt.Sprintf("Old: %s | New: %s (%d)",
+		oldRankName,
+		newRank.Name,
+		newRank.ID,
+	)
+
+	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.SetStaffRank, addInfo)
+
+	return updatedUser, nil
 }
 
-func (s *Service) SetDeveloperRank(ctx context.Context, userId uint64, rankID int) (*models.User, error) {
-	r, err := s.repo.SearchRankByID(ctx, rankID)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *Service) SetDeveloperRank(ctx context.Context, adminID uint64, userId uint64, rankID int) (*models.User, error) {
 	u, err := s.repo.SearchUserByID(ctx, userId)
 	if err != nil {
-		return nil, err
+		return nil, fiber.NewError(fiber.StatusNotFound, "user not found")
+	}
+
+	currentRank, _ := s.repo.SearchRankByID(ctx, u.DeveloperRank)
+	oldRankInfo := "None"
+	if currentRank != nil {
+		oldRankInfo = fmt.Sprintf("%s (%d)", currentRank.Name, currentRank.ID)
+	}
+
+	r, err := s.repo.SearchRankByID(ctx, rankID)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusNotFound, "target rank not found")
 	}
 
 	if !r.HasFlag("DEV") && r.Name != "None" && r.Name != "Player" {
 		slog.WithData(slog.M{
 			"rankID": rankID,
 			"userID": userId,
-		}).Error("Rank hasn't DEV flag")
+		}).Error("Attempt to set non-DEV rank via SetDeveloperRank")
 
-		return u, &fiber.Error{Code: 403, Message: "staff rank cannot be issued with this function"}
+		return nil, fiber.NewError(fiber.StatusForbidden, "this function is only for developer ranks")
 	}
 
 	setRank, err := s.repo.SetDeveloperRank(ctx, userId, rankID)
 	if err != nil {
-		return u, err
+		return nil, err
 	}
 
 	if err := s.repo.UpdateUser(ctx, setRank); err != nil {
 		return nil, err
 	}
 
+	addInfo := fmt.Sprintf("Old: %s | New: %s (%d)",
+		oldRankInfo,
+		r.Name,
+		r.ID,
+	)
+
+	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userId, models.SetDeveloperRank, addInfo)
+
 	return setRank, nil
+}
+
+func (s *Service) ChangeUser(ctx context.Context, adminID uint64, userID uint64, name *string, email *string) (*models.User, error) {
+	u, err := s.repo.SearchUserByID(ctx, userID)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusNotFound, "User not found")
+	}
+
+	oldInfo := fmt.Sprintf("Name: %s, Email: %s", u.Name, u.Email)
+
+	if name != nil {
+		u.Name = *name
+	}
+	if email != nil {
+		u.Email = *email
+	}
+
+	err = s.repo.ChangeUserData(ctx, u, name != nil, email != nil)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	newInfo := fmt.Sprintf("Name: %s, Email: %s", u.Name, u.Email)
+	addInfo := "Old: " + oldInfo + " | New: " + newInfo
+
+	_ = s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserData, addInfo)
+
+	return u, nil
 }

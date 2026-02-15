@@ -17,11 +17,11 @@ func NewService(r mysql.Repository) *Service {
 	return &Service{repo: r}
 }
 
-func (s *Service) GetCommonLogs(ctx context.Context) ([]models.CommonLog, error) {
+func (s *Service) GetCommonLogs(ctx context.Context) ([]models.LogDTO, error) {
 	return s.repo.GetCommonLogs(ctx)
 }
 
-func (s *Service) GetPunishmentLogs(ctx context.Context) ([]models.PunishmentLog, error) {
+func (s *Service) GetPunishmentLogs(ctx context.Context) ([]models.LogDTO, error) {
 	return s.repo.GetPunishmentLogs(ctx)
 }
 
@@ -38,27 +38,11 @@ func (s *Service) Log(
 		addInfo = &additional[0]
 	}
 
-	var u *models.User
-
-	if userID != nil {
-		var err error
-		u, err = s.repo.SearchUserByID(ctx, *userID)
-		if err != nil {
-			u = nil
-		}
-	}
-
 	base := models.BaseLog{
 		AdminID:        adminID,
-		AdminName:      "",
 		UserID:         userID,
-		UserName:       nil,
 		AdditionalInfo: addInfo,
 		Date:           time.Now(),
-	}
-
-	if userID != nil && u != nil {
-		base.UserName = &u.Name
 	}
 
 	switch loggerType {

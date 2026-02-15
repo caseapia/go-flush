@@ -23,6 +23,7 @@ type User struct {
 	UpdatedAt     time.Time  `bun:"updated_at,notnull,default:current_timestamp" json:"updatedAt"`
 	DeletedAt     *time.Time `bun:"deleted_at,nullzero" json:"-"`
 	TokenVersion  int        `bun:"token_version" json:"-"`
+	ActiveBanID   *uint64    `bun:"active_ban" json:"-"`
 	ActiveBan     *BanModel  `bun:"-" json:"activeBan,omitempty"`
 	LastLogin     *time.Time `bun:"last_login" json:"lastLogin"`
 	RegisterIP    string     `bun:"register_ip" json:"-"`

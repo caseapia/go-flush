@@ -52,3 +52,13 @@ func (r *Repository) DeleteRank(ctx context.Context, rank *models.RankStructure)
 		Exec(ctx)
 	return err
 }
+
+func (r *Repository) EditRank(ctx context.Context, rank *models.RankStructure) (*models.RankStructure, error) {
+	_, err := r.db.NewUpdate().
+		Model(rank).
+		Column("name", "color", "flags").
+		WherePK().
+		Exec(ctx)
+
+	return rank, err
+}

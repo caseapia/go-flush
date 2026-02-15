@@ -7,24 +7,29 @@ import (
 	"github.com/gookit/slog"
 )
 
-func (l *Repository) GetCommonLogs(ctx context.Context) ([]models.CommonLog, error) {
-	var logs []models.CommonLog
+func (r *Repository) fetchLogs(ctx context.Context, tableName string) ([]models.LogDTO, error) {
+	var logs []models.LogDTO
 
-	err := l.db.NewSelect().
+	err := r.db.NewSelect().
 		Model(&logs).
+		ModelTableExpr("flushproject_logs." + tableName + " AS l").
+		ColumnExpr("l.*").
+		ColumnExpr("u_admin.name AS sender_name").
+		ColumnExpr("u_target.name AS user_name").
+		Join("LEFT JOIN flushproject.users AS u_admin ON u_admin.id = l.admin_id").
+		Join("LEFT JOIN flushproject.users AS u_target ON u_target.id = l.user_id").
+		Order("l.date DESC").
 		Scan(ctx)
 
 	return logs, err
 }
 
-func (l *Repository) GetPunishmentLogs(ctx context.Context) ([]models.PunishmentLog, error) {
-	var logs []models.PunishmentLog
+func (r *Repository) GetCommonLogs(ctx context.Context) ([]models.LogDTO, error) {
+	return r.fetchLogs(ctx, "admin_common")
+}
 
-	err := l.db.NewSelect().
-		Model(&logs).
-		Scan(ctx)
-
-	return logs, err
+func (r *Repository) GetPunishmentLogs(ctx context.Context) ([]models.LogDTO, error) {
+	return r.fetchLogs(ctx, "admin_punishments")
 }
 
 func (l *Repository) SavePunishmentLog(ctx context.Context, entry interface{}) error {

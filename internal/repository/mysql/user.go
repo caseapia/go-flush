@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/gofiber/fiber/v2"
+	"github.com/uptrace/bun"
 )
 
 func (r *Repository) SearchUserByID(ctx context.Context, id uint64) (*models.User, error) {
@@ -73,10 +75,78 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 }
 
 func (r *Repository) SoftDelete(ctx context.Context, u *models.User) error {
+	u.Name = u.Name + "_old"
+
 	_, err := r.db.NewUpdate().
 		Model(u).
+		Column("name").
 		WherePK().
 		Exec(ctx)
+	return err
+}
+
+func (r *Repository) ChangeUserData(ctx context.Context, u *models.User, updateName bool, updateEmail bool) error {
+	if updateName && updateEmail {
+		return nil
+	}
+
+	var conditions []string
+	if updateName {
+		conditions = append(conditions, "name")
+	}
+	if updateEmail {
+		conditions = append(conditions, "email")
+	}
+
+	for _, col := range conditions {
+		val := ""
+		if col == "name" {
+			val = u.Name
+		}
+		if col == "email" {
+			val = u.Email
+		}
+
+		exists, err := r.db.NewSelect().
+			Model((*models.User)(nil)).
+			Where("? = ?", bun.Ident(col), val).
+			Where("id != ?", u.ID).
+			Exists(ctx)
+
+		if err != nil {
+			return err
+		}
+		if exists {
+			fiber.NewError(fiber.StatusConflict, "User with this "+col+" already exists")
+		}
+	}
+
+	query := r.db.NewUpdate().Model(u).WherePK()
+
+	if updateName {
+		query.Column("name")
+	}
+	if updateEmail {
+		query.Column("email")
+	}
+
+	if !updateName && !updateEmail {
+		return nil
+	}
+
+	_, err := query.Exec(ctx)
+	return err
+}
+
+func (r *Repository) ChangePassword(ctx context.Context, u *models.User, newPassword string) error {
+	u.Password = newPassword
+
+	_, err := r.db.NewUpdate().
+		Model(u).
+		Column("password").
+		WherePK().
+		Exec(ctx)
+
 	return err
 }
 
@@ -89,10 +159,19 @@ func (r *Repository) HardDelete(ctx context.Context, id uint64) error {
 }
 
 func (r *Repository) Restore(ctx context.Context, user *models.User) error {
+	user.Name = strings.ReplaceAll(user.Name, "_old", "")
+
 	_, err := r.db.NewUpdate().
 		Model(user).
+		Column("name").
 		WherePK().
 		Exec(ctx)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "1062") {
+			return &fiber.Error{Code: 403, Message: "cannot restore: nickname is already taken"}
+		}
+	}
 	return err
 }
 
@@ -135,7 +214,7 @@ func (r *Repository) CreateBan(ctx context.Context, ban *models.BanModel) error 
 
 	_, err = r.db.NewUpdate().
 		Model(&models.User{}).
-		Set("ban = ?", ban.ID).
+		Set("active_ban = ?", ban.ID).
 		Where("id = ?", ban.IssuedTo).
 		Exec(ctx)
 	return err
@@ -153,7 +232,7 @@ func (r *Repository) GetActiveBan(ctx context.Context, userID uint64) (*models.B
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, &fiber.Error{Code: 404, Message: "no rows"}
 		}
 		return nil, err
 	}
@@ -171,8 +250,8 @@ func (r *Repository) DeleteBan(ctx context.Context, userID uint64) error {
 	}
 
 	_, err = r.db.NewUpdate().
-		Model(&models.User{}).
-		Set("ban = NULL").
+		Table("users").
+		Set("active_ban = NULL").
 		Where("id = ?", userID).
 		Exec(ctx)
 

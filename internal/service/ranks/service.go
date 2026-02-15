@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -22,6 +23,7 @@ type Repository interface {
 	SearchRankByName(ctx context.Context, rankName string) (*models.RankStructure, error)
 	CreateRank(ctx context.Context, rank *models.RankStructure) error
 	DeleteRank(ctx context.Context, rank *models.RankStructure) error
+	EditRank(ctx context.Context, rank *models.RankStructure) (*models.RankStructure, error)
 }
 
 type Service struct {
@@ -125,4 +127,27 @@ func (s *Service) SearchRankByID(ctx *fiber.Ctx, id int) (*models.RankStructure,
 	}
 
 	return rank, nil
+}
+
+func (s *Service) EditRank(ctx context.Context, sender uint64, rank *models.RankStructure) (*models.RankStructure, error) {
+	oldRank, err := s.repo.SearchRankByID(ctx, int(rank.ID))
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusNotFound, "rank not found")
+	}
+
+	oldFlags := strings.Join(oldRank.Flags, ", ")
+	oldInfo := fmt.Sprintf("Name: %s, Color: %s, Flags: %v", oldRank.Name, oldRank.Color, oldFlags)
+
+	updatedRank, err := s.repo.EditRank(ctx, rank)
+	if err != nil {
+		return nil, &fiber.Error{Code: 500, Message: err.Error()}
+	}
+
+	newFlags := strings.Join(updatedRank.Flags, ", ")
+	newInfo := fmt.Sprintf("Name: %s, Color: %s, Flags: %v", updatedRank.Name, updatedRank.Color, newFlags)
+
+	addInfo := "Old: " + oldInfo + " | New: " + newInfo
+	_ = s.logger.Log(ctx, models.CommonLogger, sender, nil, models.EditRank, addInfo)
+
+	return updatedRank, nil
 }

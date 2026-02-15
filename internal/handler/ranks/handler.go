@@ -3,6 +3,7 @@ package ranks
 import (
 	"strings"
 
+	"github.com/caseapia/goproject-flush/internal/middleware"
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/caseapia/goproject-flush/internal/service/ranks"
 	"github.com/gofiber/fiber/v2"
@@ -80,10 +81,38 @@ func (r *Handler) DeleteRank(c *fiber.Ctx) error {
 	return c.JSON(IsSuccess)
 }
 
+func (h *Handler) EditRank(c *fiber.Ctx) error {
+	rankID, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid rank id")
+	}
+
+	val := c.Locals("user")
+	sender, ok := val.(*models.User)
+	if !ok {
+		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
+	}
+
+	var input models.RankStructure
+	if err := c.BodyParser(&input); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
+	}
+
+	input.ID = int64(rankID)
+
+	r, err := h.service.EditRank(c.UserContext(), sender.ID, &input)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(r)
+}
+
 func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group := router.Group("/admin/ranks")
 
 	group.Get("/", h.GetRanksList)
-	group.Post("/create", h.CreateRank)
-	group.Delete("/delete/:id", h.DeleteRank)
+	group.Post("/create", middleware.RequireRankFlag("STAFFMANAGEMENT"), h.CreateRank)
+	group.Delete("/delete/:id", middleware.RequireRankFlag("MANAGER"), h.DeleteRank)
+	group.Patch("/edit/:id", middleware.RequireRankFlag("MANAGER"), h.EditRank)
 }

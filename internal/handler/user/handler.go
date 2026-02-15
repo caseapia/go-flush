@@ -196,6 +196,12 @@ func (h *Handler) RestoreUser(c *fiber.Ctx) error {
 }
 
 func (h *Handler) SetStaffRank(c *fiber.Ctx) error {
+	val := c.Locals("user")
+	admin, ok := val.(*models.User)
+	if !ok {
+		return &fiber.Error{Code: 401, Message: "unauthorized"}
+	}
+
 	userID, err := c.ParamsInt("id")
 	if err != nil {
 		slog.Debugf("SetUserStatusError: %v", err)
@@ -213,6 +219,7 @@ func (h *Handler) SetStaffRank(c *fiber.Ctx) error {
 
 	u, err := h.service.SetStaffRank(
 		c.Context(),
+		admin.ID,
 		uint64(userID),
 		input.Status,
 	)
@@ -225,6 +232,12 @@ func (h *Handler) SetStaffRank(c *fiber.Ctx) error {
 }
 
 func (h *Handler) SetDeveloperRank(c *fiber.Ctx) error {
+	val := c.Locals("user")
+	admin, ok := val.(*models.User)
+	if !ok {
+		return &fiber.Error{Code: 401, Message: "unauthorized"}
+	}
+
 	userID, err := c.ParamsInt("id")
 	if err != nil {
 		slog.Debugf("SetDeveloperStatusError: %v", err)
@@ -242,11 +255,47 @@ func (h *Handler) SetDeveloperRank(c *fiber.Ctx) error {
 
 	u, err := h.service.SetDeveloperRank(
 		c.Context(),
+		admin.ID,
 		uint64(userID),
 		input.Status,
 	)
 	if err != nil {
 		slog.Debugf("SetDeveloperStatusError: %v", err)
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(u)
+}
+
+func (h *Handler) ChangeUser(c *fiber.Ctx) error {
+	userID, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid user id")
+	}
+
+	val := c.Locals("user")
+	sender, ok := val.(*models.User)
+	if !ok {
+		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
+	}
+
+	var input struct {
+		Name  *string `json:"name"`
+		Email *string `json:"email"`
+	}
+
+	if err := c.BodyParser(&input); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
+	}
+
+	if input.Name != nil {
+		if len(*input.Name) <= 1 {
+			return fiber.NewError(fiber.StatusBadRequest, "new nickname is too short")
+		}
+	}
+
+	u, err := h.service.ChangeUser(c.UserContext(), sender.ID, uint64(userID), input.Name, input.Email)
+	if err != nil {
 		return err
 	}
 
@@ -265,8 +314,9 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	groupAdmin.Patch("/ban/:id", middleware.RequireRankFlag("ADMIN"), h.BanUser)
 	groupAdmin.Delete("/unban/:id", middleware.RequireRankFlag("ADMIN"), h.UnbanUser)
 	groupAdmin.Delete("/delete/:id", middleware.RequireRankFlag("SENIOR"), h.DeleteUser)
-	groupAdmin.Put("/restore/:id", middleware.RequireRankFlag("SENIOR"), h.RestoreUser)
+	groupAdmin.Put("/restore/:id", middleware.RequireRankFlag("MANAGER"), h.RestoreUser)
 	groupAdmin.Patch("/rank/staff/:id", middleware.RequireRankFlag("STAFFMANAGEMENT"), h.SetStaffRank)
 	groupAdmin.Patch("/rank/developer/:id", middleware.RequireRankFlag("STAFFMANAGEMENT"), h.SetDeveloperRank)
 	groupAdmin.Get("/:id", middleware.RequireRankFlag("ADMIN"), h.GetUserPrivate)
+	groupAdmin.Patch("/edit/:id", middleware.RequireRankFlag("SENIOR"), h.ChangeUser)
 }
