@@ -25,7 +25,7 @@ type Repository interface {
 	HardDelete(ctx context.Context, id uint64) error
 	Restore(ctx context.Context, user *models.User) error
 	CreateBan(ctx context.Context, ban *models.BanModel) error
-	GetActiveBan(ctx context.Context, userID uint64) (*models.BanModel, error)
+	GetActiveBan(ctx context.Context, userID uint64) (*models.BanModelDTO, error)
 	DeleteBan(ctx context.Context, userID uint64) error
 	ChangeUserData(ctx context.Context, u *models.User, updateName, updateEmail, updatePassword bool) error
 
@@ -69,11 +69,6 @@ func (s *Service) GetUsersList(ctx context.Context) ([]models.User, error) {
 	users, err := s.repo.SearchAllUsers(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	for i := range users {
-		ban, _ := s.repo.GetActiveBan(ctx, users[i].ID)
-		users[i].ActiveBan = ban
 	}
 
 	return users, nil
@@ -126,7 +121,9 @@ func (s *Service) BanUser(ctx context.Context, adminID, userID uint64, unbanDate
 	addInfo := fmt.Sprintf("reason: %s\nuntil: %s", reason, unbanDate.String())
 	s.logger.Log(ctx, models.PunishmentLogger, adminID, &userID, models.Ban, addInfo)
 
-	user.ActiveBan = ban
+	user.ActiveBan = &models.BanModelDTO{
+		BanModel: *ban,
+	}
 	return user, nil
 }
 

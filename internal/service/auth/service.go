@@ -82,7 +82,7 @@ func (s *Service) Login(ctx context.Context, login, password, userAgent, ip stri
 	return accessToken, refreshToken, nil
 }
 
-func (s *Service) Refresh(ctx context.Context, refreshToken string) (string, string, error) {
+func (s *Service) Refresh(ctx context.Context, refreshToken, useragent, ip string) (string, string, error) {
 	refreshHash := hash.HashToken(refreshToken)
 
 	session, err := s.repository.GetSessionByHash(ctx, refreshHash)

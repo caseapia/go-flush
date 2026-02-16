@@ -15,3 +15,9 @@ type BanModel struct {
 	ExpirationDate time.Time `bun:"expiration_date,notnull" json:"expirationDate"`
 	Reason         string    `bun:"reason,notnull" json:"reason"`
 }
+
+type BanModelDTO struct {
+	BanModel   `bun:",extend"`
+	AdminName  string `bun:"admin_name" json:"adminName"`
+	TargetName string `bun:"target_name" json:"targetName"`
+}
