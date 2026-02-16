@@ -48,7 +48,20 @@ func NewApp() (*fiber.App, error) {
 	loggerHandler := logger.NewHandler(loggerSrv)
 	ranksHandler := ranks.NewHandler(ranksSrv)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+			}
+
+			return c.Status(code).JSON(fiber.Map{
+				"code":    code,
+				"message": err.Error(),
+			})
+		},
+	})
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "http://localhost:3000,https://fe-go-flush.vercel.app,http://localhost:8080",
