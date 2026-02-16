@@ -133,9 +133,42 @@ func (h *Handler) Logout(c *fiber.Ctx) error {
 	return c.JSON(status)
 }
 
+func (h *Handler) Refresh(c *fiber.Ctx) error {
+	refreshToken := c.Cookies("refresh_token")
+	if refreshToken == "" {
+		return fiber.NewError(fiber.StatusUnauthorized, "refresh token is missing")
+	}
+
+	newAccess, newRefresh, err := h.authService.Refresh(
+		c.Context(),
+		refreshToken,
+		c.Get("User-Agent"),
+		c.IP(),
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "invalid refresh token")
+	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    newRefresh,
+		Path:     "/",
+		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "Strict",
+		Expires:  time.Now().Add(7 * 24 * time.Hour),
+	})
+
+	return c.JSON(fiber.Map{
+		"accessToken":  newAccess,
+		"refreshToken": newRefresh,
+	})
+}
+
 func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group := router.Group("/auth")
 
+	group.Post("/refresh", h.Refresh)
 	group.Post("/register", h.Register)
 	group.Post("/login", h.Login)
 }
