@@ -7,7 +7,7 @@ import (
 )
 
 type Invite struct {
-	bun.BaseModel `bun:"table:invites"`
+	bun.BaseModel `bun:"table:invites,alias:i"`
 
 	ID        uint64    `bun:"id,pk,autoincrement" json:"id"`
 	Code      string    `bun:"code" json:"code"`
@@ -15,9 +15,7 @@ type Invite struct {
 	Used      bool      `bun:"used" json:"used"`
 	UsedBy    *uint64   `bun:"used_by" json:"usedBy"`
 	CreatedAt time.Time `bun:"created_at" json:"createdAt"`
-}
-type InviteDTO struct {
-	Invite      `bun:",extend"`
-	CreatorName string `json:"creatorName" bun:"creator_name"`
-	UserName    string `json:"userName" bun:"user_name"`
+
+	Creator *User `bun:"rel:belongs-to,join:created_by=id" json:"creator"`
+	User    *User `bun:"rel:belongs-to,join:used_by=id" json:"user"`
 }

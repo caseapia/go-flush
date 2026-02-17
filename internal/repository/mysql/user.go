@@ -28,6 +28,7 @@ func (r *Repository) SearchUserByID(ctx context.Context, id uint64) (*models.Use
 		Join("LEFT JOIN bans AS ab ON ab.id = user.active_ban AND ab.expiration_date > NOW()").
 		Join("LEFT JOIN users AS adm ON adm.id = ab.issued_by").
 		Where("user.id = ?", id).
+		Limit(USER_COLUMNS_LIMIT).
 		Scan(ctx)
 
 	if err != nil {
@@ -50,6 +51,7 @@ func (r *Repository) SearchUserByName(ctx context.Context, name string) (*models
 	err := r.db.NewSelect().
 		Model(u).
 		Where("name = ?", name).
+		Limit(USER_COLUMNS_LIMIT).
 		Scan(ctx)
 
 	if err != nil {
@@ -82,6 +84,7 @@ func (r *Repository) SearchAllUsers(ctx context.Context) ([]models.User, error) 
 		ColumnExpr("adm.name AS active_ban__admin_name").
 		Join("LEFT JOIN bans AS ab ON ab.id = user.active_ban").
 		Join("LEFT JOIN users AS adm ON adm.id = ab.issued_by").
+		Limit(USER_COLUMNS_LIMIT).
 		Scan(ctx)
 
 	return users, err
@@ -225,6 +228,19 @@ func (r *Repository) SetDeveloperRank(ctx context.Context, userID uint64, rankID
 	return r.SearchUserByID(ctx, userID)
 }
 
+func (r *Repository) EditUserFlags(ctx context.Context, userID uint64, flags []string) (*models.User, error) {
+	_, err := r.db.NewUpdate().
+		Model((*models.User)(nil)).
+		Set("staff_flags = ?", flags).
+		Where("id = ?", userID).
+		Exec(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.SearchUserByID(ctx, userID)
+}
+
 func (r *Repository) CreateBan(ctx context.Context, ban *models.BanModel) error {
 	_, err := r.db.NewInsert().
 		Model(ban).
@@ -294,7 +310,24 @@ func (r *Repository) UpdateLastLogin(ctx *fiber.Ctx, userID uint64) error {
 		Model((*models.User)(nil)).
 		Set("last_login = ?", time.Now()).
 		Set("last_ip = ?", ctx.IP()).
+		Set("register_ip = IF(register_ip IS NULL, ?, register_ip)", ctx.IP()).
 		Where("id = ?", userID).
 		Exec(ctx.UserContext())
+	return err
+}
+
+func (r *Repository) ResetUserSensitiveData(ctx *fiber.Ctx, userID uint64) error {
+	_, err := r.db.NewUpdate().
+		Model((*models.User)(nil)).
+		Set("last_login = NULL").
+		Set("last_ip = NULL").
+		Set("register_ip = NULL").
+		Where("id = ?", userID).
+		Exec(ctx.UserContext())
+
+	if err != nil {
+		return err
+	}
+
 	return err
 }

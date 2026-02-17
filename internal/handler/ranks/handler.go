@@ -38,11 +38,7 @@ func (r *Handler) CreateRank(c *fiber.Ctx) error {
 		return &fiber.Error{Code: 401, Message: "unauthorized"}
 	}
 
-	var input struct {
-		Name  string   `json:"name"`
-		Color string   `json:"color"`
-		Flags []string `json:"flags"`
-	}
+	var input models.CreateRankBody
 
 	if err := c.BodyParser(&input); err != nil {
 		return &fiber.Error{Code: 400, Message: err.Error()}
@@ -98,7 +94,7 @@ func (h *Handler) EditRank(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 
-	input.ID = int64(rankID)
+	input.ID = rankID
 
 	r, err := h.service.EditRank(c.UserContext(), sender.ID, &input)
 	if err != nil {
@@ -112,7 +108,7 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group := router.Group("/admin/ranks")
 
 	group.Get("/", h.GetRanksList)
-	group.Post("/create", middleware.RequireRankFlag("STAFFMANAGEMENT"), h.CreateRank)
-	group.Delete("/delete/:id", middleware.RequireRankFlag("MANAGER"), h.DeleteRank)
-	group.Patch("/edit/:id", middleware.RequireRankFlag("MANAGER"), h.EditRank)
+	group.Post("/create", middleware.RequireFlag("STAFFMANAGEMENT"), h.CreateRank)
+	group.Delete("/delete/:id", middleware.RequireFlag("MANAGER"), h.DeleteRank)
+	group.Patch("/edit/:id", middleware.RequireFlag("MANAGER"), h.EditRank)
 }

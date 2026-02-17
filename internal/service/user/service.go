@@ -3,6 +3,8 @@ package user
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/caseapia/goproject-flush/internal/models"
@@ -28,6 +30,8 @@ type Repository interface {
 	GetActiveBan(ctx context.Context, userID uint64) (*models.BanModelDTO, error)
 	DeleteBan(ctx context.Context, userID uint64) error
 	ChangeUserData(ctx context.Context, u *models.User, updateName, updateEmail, updatePassword bool) error
+	EditUserFlags(ctx context.Context, userID uint64, flags []string) (*models.User, error)
+	ResetUserSensitiveData(ctx *fiber.Ctx, userID uint64) error
 
 	SearchRankByID(ctx context.Context, id int) (*models.RankStructure, error)
 	SetStaffRank(ctx context.Context, userID uint64, rankID int) (*models.User, error)
@@ -284,6 +288,39 @@ func (s *Service) SetStaffRank(ctx context.Context, adminID uint64, userID uint6
 	return updatedUser, nil
 }
 
+func (s *Service) EditUserFlags(ctx context.Context, senderID uint64, userID uint64, flags []string) (*models.User, error) {
+	allowedToAssignExclusiveFlags := []uint64{1, 50}
+
+	exclusiveAllowFlags := []string{"DEV", "MANAGER"}
+
+	u, err := s.repo.SearchUserByID(ctx, userID)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusNotFound, "user not found")
+	}
+
+	currentFlags := u.Flags
+	oldFlags := "None"
+	if currentFlags != nil && len(*currentFlags) > 0 {
+		oldFlags = strings.Join(*currentFlags, ", ")
+	}
+
+	for _, f := range flags {
+		if slices.Contains(exclusiveAllowFlags, f) && !slices.Contains(allowedToAssignExclusiveFlags, senderID) {
+			return nil, fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("unauthorized to assign '%s' flag", f))
+		}
+	}
+
+	updatedUser, err := s.repo.EditUserFlags(ctx, userID, flags)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	addInfo := fmt.Sprintf("Before: %s\nAfter: %s", oldFlags, strings.Join(*updatedUser.Flags, ", "))
+	s.logger.Log(ctx, models.CommonLogger, senderID, &userID, models.ChangeFlags, addInfo)
+
+	return updatedUser, nil
+}
+
 func (s *Service) SetDeveloperRank(ctx context.Context, adminID uint64, userId uint64, rankID int) (*models.User, error) {
 	u, err := s.repo.SearchUserByID(ctx, userId)
 	if err != nil {
@@ -366,6 +403,22 @@ func (s *Service) ChangeUser(ctx context.Context, adminID uint64, userID uint64,
 	} else {
 		s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserPassword)
 	}
+
+	return u, nil
+}
+
+func (s *Service) ResetUserSensitiveData(ctx *fiber.Ctx, senderID uint64, userID uint64) (*models.User, error) {
+	u, err := s.repo.SearchUserByID(ctx.UserContext(), userID)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusNotFound, "user not found")
+	}
+
+	err = s.repo.ResetUserSensitiveData(ctx, userID)
+	if err != nil {
+		return nil, fiber.NewError(1, err.Error())
+	}
+
+	s.logger.Log(ctx.UserContext(), models.CommonLogger, senderID, &userID, models.ResetUserSensetiveData)
 
 	return u, nil
 }

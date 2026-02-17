@@ -10,11 +10,10 @@ import (
 	inviteutils "github.com/caseapia/goproject-flush/pkg/utils/invite"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gookit/slog"
-
 )
 
 type InviteRepository interface {
-	SearchAllInvites(ctx context.Context) ([]models.InviteDTO, error)
+	SearchAllInvites(ctx context.Context) ([]models.Invite, error)
 	CreateInvite(ctx context.Context, invite *models.Invite) error
 	DeleteInvite(ctx context.Context, inviteID uint64) error
 	SearchInviteByCode(ctx context.Context, code string) (*models.Invite, error)
@@ -31,7 +30,7 @@ func NewService(inviteRepo InviteRepository, logger logger.Service) *Service {
 	return &Service{inviteRepo: inviteRepo, logger: logger}
 }
 
-func (s *Service) GetInviteCodes(ctx context.Context) ([]models.InviteDTO, error) {
+func (s *Service) GetInviteCodes(ctx context.Context) ([]models.Invite, error) {
 	invites, err := s.inviteRepo.SearchAllInvites(ctx)
 	if err != nil {
 		slog.WithData(slog.M{

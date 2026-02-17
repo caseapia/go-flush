@@ -22,28 +22,23 @@ func NewHandler(auth *auth.Service, invite *invite.Service) *Handler {
 }
 
 func (h *Handler) Register(c *fiber.Ctx) error {
-	var body struct {
-		Login      string `json:"login"`
-		Email      string `json:"email"`
-		Password   string `json:"password"`
-		InviteCode string `json:"inviteCode"`
-	}
+	var input models.RegisterBody
 
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.BodyParser(&input); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 
-	invite, err := h.inviteService.GetInviteByID(c.UserContext(), body.InviteCode)
+	invite, err := h.inviteService.GetInviteByID(c.UserContext(), input.InviteCode)
 	if err != nil || invite.Used {
 		return fiber.NewError(fiber.StatusBadRequest, "invite code is invalid or already used")
 	}
 
 	user, err := h.authService.Register(
 		c.Context(),
-		body.Login,
-		body.InviteCode,
-		body.Email,
-		body.Password,
+		input.Login,
+		input.InviteCode,
+		input.Email,
+		input.Password,
 		c.IP(),
 	)
 
@@ -62,9 +57,9 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	err = h.inviteService.UseInvite(c.UserContext(), body.InviteCode, user.ID)
+	err = h.inviteService.UseInvite(c.UserContext(), input.InviteCode, user.ID)
 	if err != nil {
-		slog.Error("Failed to mark invite as used", "error", err, "code", body.InviteCode)
+		slog.Error("Failed to mark invite as used", "error", err, "code", input.InviteCode)
 		return c.Status(fiber.StatusNotFound).SendString(err.Error())
 	}
 
@@ -77,22 +72,19 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 }
 
 func (h *Handler) Login(c *fiber.Ctx) error {
-	var body struct {
-		Login    string `json:"login"`
-		Password string `json:"password"`
-	}
+	var input models.LoginBody
 
-	if err := c.BodyParser(&body); err != nil {
+	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
 	}
 
-	access, refresh, err := h.authService.Login(c.Context(), body.Login, body.Password, c.Get("User-Agent"), c.IP())
+	access, refresh, err := h.authService.Login(c.Context(), input.Login, input.Password, c.Get("User-Agent"), c.IP())
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	slog.WithData(slog.M{
-		"user": body.Login,
+		"user": input.Login,
 	}).Debug("User successfully logged in")
 
 	c.Cookie(&fiber.Cookie{

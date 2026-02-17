@@ -7,6 +7,7 @@ import (
 
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/caseapia/goproject-flush/internal/repository/mysql"
+	"github.com/caseapia/goproject-flush/internal/service/logger"
 	"github.com/caseapia/goproject-flush/internal/utils"
 	"github.com/caseapia/goproject-flush/pkg/utils/hash"
 	"github.com/gofiber/fiber/v2"
@@ -17,10 +18,11 @@ import (
 
 type Service struct {
 	repository mysql.Repository
+	logger     logger.Service
 }
 
-func NewService(userRepo mysql.Repository) *Service {
-	return &Service{repository: userRepo}
+func NewService(userRepo mysql.Repository, logger logger.Service) *Service {
+	return &Service{repository: userRepo, logger: logger}
 }
 
 var ErrInvalidToken = &fiber.Error{Code: 400, Message: "invalid token"}

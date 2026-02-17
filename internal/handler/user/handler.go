@@ -2,7 +2,6 @@ package user
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/caseapia/goproject-flush/internal/middleware"
 	"github.com/caseapia/goproject-flush/internal/models"
@@ -106,14 +105,11 @@ func (h *Handler) BanUser(c *fiber.Ctx) error {
 		return &fiber.Error{Code: 401, Message: "unauthorized"}
 	}
 
-	var Body struct {
-		UnbanDate time.Time `json:"unbanDate"`
-		Reason    string    `json:"reason"`
-	}
+	var input models.BanRequest
 
-	c.BodyParser(&Body)
+	c.BodyParser(&input)
 
-	ban, err := h.service.BanUser(c.UserContext(), admin.ID, uint64(id), Body.UnbanDate, Body.Reason)
+	ban, err := h.service.BanUser(c.UserContext(), admin.ID, uint64(id), input.UnbanDate, input.Reason)
 	if err != nil {
 		return err
 	}
@@ -145,17 +141,13 @@ func (h *Handler) CreateUser(c *fiber.Ctx) error {
 		return &fiber.Error{Code: 401, Message: "unauthorized"}
 	}
 
-	var Body struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var input models.CreateUserRequest
 
-	if err := c.BodyParser(&Body); err != nil {
+	if err := c.BodyParser(&input); err != nil {
 		return &fiber.Error{Code: 400, Message: "invalid request"}
 	}
 
-	newUser, err := h.service.CreateUser(c, admin.ID, Body.Name, Body.Email, Body.Password)
+	newUser, err := h.service.CreateUser(c, admin.ID, input.Name, input.Email, input.Password)
 	if err != nil {
 		return err
 	}
@@ -210,9 +202,7 @@ func (h *Handler) SetStaffRank(c *fiber.Ctx) error {
 		return &fiber.Error{Code: 400, Message: err.Error()}
 	}
 
-	var input struct {
-		Status int `json:"status"`
-	}
+	var input models.RankSetterRequest
 
 	if err := c.BodyParser(&input); err != nil {
 		slog.Debugf("SetUserStatusError: %v", err)
@@ -246,9 +236,7 @@ func (h *Handler) SetDeveloperRank(c *fiber.Ctx) error {
 		return err
 	}
 
-	var input struct {
-		Status int `json:"status"`
-	}
+	var input models.RankSetterRequest
 
 	if err := c.BodyParser(&input); err != nil {
 		slog.Debugf("SetDeveloperStatusError: %v", err)
@@ -281,11 +269,7 @@ func (h *Handler) ChangeUser(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 	}
 
-	var input struct {
-		Name     *string `json:"name"`
-		Email    *string `json:"email"`
-		Password *string `json:"password"`
-	}
+	var input models.ChangeUserDataRequest
 
 	if err := c.BodyParser(&input); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
@@ -315,6 +299,52 @@ func (h *Handler) ChangeUser(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(u)
 }
 
+func (h *Handler) EditUserFlags(c *fiber.Ctx) error {
+	userID, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid user id")
+	}
+
+	val := c.Locals("user")
+	sender, ok := val.(*models.User)
+	if !ok {
+		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
+	}
+
+	var input models.EditUserFlagsRequest
+
+	if err := c.BodyParser(&input); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid body")
+	}
+
+	u, err := h.service.EditUserFlags(c.UserContext(), sender.ID, uint64(userID), input.NewFlags)
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(u)
+}
+
+func (h *Handler) ResetUserSensetiveData(c *fiber.Ctx) error {
+	userID, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid user id")
+	}
+
+	val := c.Locals("user")
+	sender, ok := val.(*models.User)
+	if !ok {
+		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
+	}
+
+	u, err := h.service.ResetUserSensitiveData(c, sender.ID, uint64(userID))
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(u)
+}
+
 func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group := router.Group("/user")
 	groupAdmin := router.Group("/admin/user")
@@ -323,13 +353,15 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group.Get("/account", h.GetOwnAccount)
 	group.Get("/:id", h.SearchUserByID)
 
-	groupAdmin.Put("/create", middleware.RequireRankFlag("SENIOR"), h.CreateUser)
-	groupAdmin.Patch("/ban/:id", middleware.RequireRankFlag("ADMIN"), h.BanUser)
-	groupAdmin.Delete("/unban/:id", middleware.RequireRankFlag("ADMIN"), h.UnbanUser)
-	groupAdmin.Delete("/delete/:id", middleware.RequireRankFlag("SENIOR"), h.DeleteUser)
-	groupAdmin.Put("/restore/:id", middleware.RequireRankFlag("MANAGER"), h.RestoreUser)
-	groupAdmin.Patch("/rank/staff/:id", middleware.RequireRankFlag("STAFFMANAGEMENT"), h.SetStaffRank)
-	groupAdmin.Patch("/rank/developer/:id", middleware.RequireRankFlag("STAFFMANAGEMENT"), h.SetDeveloperRank)
-	groupAdmin.Get("/:id", middleware.RequireRankFlag("ADMIN"), h.GetUserPrivate)
-	groupAdmin.Patch("/edit/:id", middleware.RequireRankFlag("MANAGER"), h.ChangeUser)
+	groupAdmin.Put("/create", middleware.RequireFlag("SENIOR"), h.CreateUser)
+	groupAdmin.Patch("/ban/:id", middleware.RequireFlag("ADMIN"), h.BanUser)
+	groupAdmin.Delete("/unban/:id", middleware.RequireFlag("ADMIN"), h.UnbanUser)
+	groupAdmin.Delete("/delete/:id", middleware.RequireFlag("SENIOR"), h.DeleteUser)
+	groupAdmin.Put("/restore/:id", middleware.RequireFlag("MANAGER"), h.RestoreUser)
+	groupAdmin.Patch("/rank/staff/:id", middleware.RequireFlag("STAFFMANAGEMENT"), h.SetStaffRank)
+	groupAdmin.Patch("/rank/developer/:id", middleware.RequireFlag("STAFFMANAGEMENT"), h.SetDeveloperRank)
+	groupAdmin.Get("/:id", middleware.RequireFlag("ADMIN"), h.GetUserPrivate)
+	groupAdmin.Patch("/edit/:id", middleware.RequireFlag("MANAGER"), h.ChangeUser)
+	groupAdmin.Patch("/editflag/:id", middleware.RequireFlag("STAFFMANAGEMENT"), h.EditUserFlags)
+	groupAdmin.Delete("/reset/:id", middleware.RequireFlag("SENIOR"), h.ResetUserSensetiveData)
 }

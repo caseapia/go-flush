@@ -8,7 +8,12 @@ import (
 
 func (r *Repository) SearchAllRanks(ctx context.Context) ([]models.RankStructure, error) {
 	var ranks []models.RankStructure
-	err := r.db.NewSelect().Model(&ranks).Scan(ctx)
+	err := r.db.NewSelect().
+		Model(&ranks).
+		Relation("Users").
+		Relation("Developers").
+		Limit(COLUMNS_LIMIT).
+		Scan(ctx)
 	return ranks, err
 }
 
@@ -16,7 +21,10 @@ func (r *Repository) SearchRankByID(ctx context.Context, id int) (*models.RankSt
 	rank := new(models.RankStructure)
 	err := r.db.NewSelect().
 		Model(rank).
+		Relation("Users").
+		Relation("Developers").
 		Where("id = ?", id).
+		Limit(1).
 		Scan(ctx)
 	if err != nil {
 		return nil, err
@@ -28,7 +36,10 @@ func (r *Repository) SearchRankByName(ctx context.Context, rankName string) (*mo
 	rank := new(models.RankStructure)
 	err := r.db.NewSelect().
 		Model(rank).
+		Relation("Users").
+		Relation("Developers").
 		Where("name = ?", rankName).
+		Limit(1).
 		Scan(ctx)
 	if err != nil {
 		return nil, err

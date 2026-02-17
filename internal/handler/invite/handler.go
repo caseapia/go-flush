@@ -79,7 +79,7 @@ func (h *Handler) DeleteInvite(c *fiber.Ctx) error {
 func (h *Handler) RegisterRoutes(router fiber.Router) {
 	group := router.Group("/admin/invite")
 
-	group.Get("/list", middleware.RequireRankFlag("ADMIN"), h.GetInviteCodes)
-	group.Post("/create", middleware.RequireRankFlag("ADMIN"), h.CreateInvite)
-	group.Delete("/delete/:id", middleware.RequireRankFlag("LEAD"), h.DeleteInvite)
+	group.Get("/list", middleware.RequireFlag("ADMIN"), h.GetInviteCodes)
+	group.Post("/create", middleware.RequireFlag("ADMIN"), h.CreateInvite)
+	group.Delete("/delete/:id", middleware.RequireFlag("LEAD"), h.DeleteInvite)
 }

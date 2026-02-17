@@ -5,31 +5,64 @@ import (
 
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/gookit/slog"
+	"github.com/uptrace/bun"
+
 )
 
-func (r *Repository) fetchLogs(ctx context.Context, tableName string) ([]models.LogDTO, error) {
-	var logs []models.LogDTO
+func (r *Repository) GetCommonLogs(ctx context.Context, startDate, endDate, keywords string) ([]models.CommonLog, int, error) {
+	var logs []models.CommonLog
 
-	err := r.db.NewSelect().
+	query := r.db.NewSelect().
 		Model(&logs).
-		ModelTableExpr("flushproject_logs." + tableName + " AS l").
-		ColumnExpr("l.*").
-		ColumnExpr("COALESCE(u_admin.name, CONCAT('Deleted Account #', l.admin_id)) AS sender_name").
-		ColumnExpr(`CASE WHEN l.user_id IS NULL THEN NULL ELSE COALESCE(u_target.name, CONCAT('Deleted Account #', l.user_id)) END AS user_name`).
-		Join("LEFT JOIN flushproject.users AS u_admin ON u_admin.id = l.admin_id").
-		Join("LEFT JOIN flushproject.users AS u_target ON u_target.id = l.user_id").
-		Order("l.date DESC").
-		Scan(ctx)
+		Relation("Admin").
+		Relation("User").
+		Order("date DESC").
+		Limit(LOGS_COLUMNS_LIMIT)
 
-	return logs, err
+	if startDate != "" {
+		query = query.Where("date >= ?", startDate)
+	}
+	if endDate != "" {
+		query = query.Where("date <= ?", endDate)
+	}
+
+	if keywords != "" {
+		query = query.WhereGroup("AND", func(q *bun.SelectQuery) *bun.SelectQuery {
+			keyword := "%" + keywords + "%"
+			return q.Where("LOWER(action) LIKE LOWER(?)", keyword).
+				WhereOr("LOWER(additional_information) LIKE LOWER(?)", keyword)
+		})
+	}
+
+	err := query.Scan(ctx)
+	return logs, COLUMNS_LIMIT, err
 }
 
-func (r *Repository) GetCommonLogs(ctx context.Context) ([]models.LogDTO, error) {
-	return r.fetchLogs(ctx, "admin_common")
-}
+func (r *Repository) GetPunishmentLogs(ctx context.Context, startDate, endDate, keywords string) ([]models.PunishmentLog, int, error) {
+	var logs []models.PunishmentLog
 
-func (r *Repository) GetPunishmentLogs(ctx context.Context) ([]models.LogDTO, error) {
-	return r.fetchLogs(ctx, "admin_punishments")
+	query := r.db.NewSelect().
+		Model(&logs).
+		Relation("Admin").
+		Relation("User").
+		Order("date DESC").
+		Limit(COLUMNS_LIMIT)
+
+	if startDate != "" {
+		query = query.Where("date >= ?", startDate)
+	}
+	if endDate != "" {
+		query = query.Where("date <= ?", endDate)
+	}
+	if keywords != "" {
+		query = query.WhereGroup("AND", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("action ILIKE ?", "%"+keywords+"%").
+				WhereOr("additional_information ILIKE ?", "%"+keywords+"%")
+		})
+	}
+
+	err := query.Scan(ctx)
+	return logs, COLUMNS_LIMIT, err
 }
 
 func (l *Repository) SavePunishmentLog(ctx context.Context, entry interface{}) error {
@@ -41,10 +74,7 @@ func (l *Repository) SavePunishmentLog(ctx context.Context, entry interface{}) e
 		return err
 	}
 
-	slog.WithData(slog.M{
-		"entryData": entry,
-	}).Debugf("log inserted successfully")
-
+	slog.WithData(slog.M{"entryData": entry}).Debugf("log inserted successfully")
 	return nil
 }
 
@@ -57,9 +87,6 @@ func (l *Repository) SaveCommonLog(ctx context.Context, entry interface{}) error
 		return err
 	}
 
-	slog.WithData(slog.M{
-		"entryData": entry,
-	}).Debugf("log inserted successfully")
-
+	slog.WithData(slog.M{"entryData": entry}).Debugf("log inserted successfully")
 	return nil
 }

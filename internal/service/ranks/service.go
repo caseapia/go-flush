@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/caseapia/goproject-flush/internal/models"
@@ -104,7 +103,7 @@ func (s *Service) DeleteRank(ctx *fiber.Ctx, adminID uint64, id int) (bool, erro
 		return false, err
 	}
 
-	addInfo := "with ID: " + strconv.FormatInt(r.ID, 10) + ", with name: " + r.Name
+	addInfo := fmt.Sprintf("with ID: %d, with name: %s", r.ID, r.Name)
 
 	s.logger.Log(ctx.UserContext(), models.CommonLogger, 0, nil, models.DeleteRank, addInfo)
 

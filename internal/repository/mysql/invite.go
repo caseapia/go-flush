@@ -5,20 +5,18 @@ import (
 
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/gofiber/fiber/v2"
+
 )
 
-func (r *Repository) SearchAllInvites(ctx context.Context) ([]models.InviteDTO, error) {
-	var invites []models.InviteDTO
+func (r *Repository) SearchAllInvites(ctx context.Context) ([]models.Invite, error) {
+	var invites []models.Invite
 
 	err := r.db.NewSelect().
-		TableExpr("invites AS inv").
 		Model(&invites).
-		ColumnExpr("inv.*").
-		ColumnExpr("c.name AS creator_name").
-		ColumnExpr("u.name AS user_name").
-		Join("LEFT JOIN users AS c ON c.id = inv.created_by").
-		Join("LEFT JOIN users AS u ON u.id = inv.used_by").
-		Order("inv.created_at DESC").
+		Relation("Creator").
+		Relation("User").
+		Order("created_at DESC").
+		Limit(COLUMNS_LIMIT).
 		Scan(ctx)
 
 	return invites, err

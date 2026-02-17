@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"fmt"
+
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/caseapia/goproject-flush/internal/repository/mysql"
 	"github.com/caseapia/goproject-flush/internal/service/ranks"
@@ -16,42 +18,60 @@ func LoadRank(rankSrv *ranks.Service) fiber.Handler {
 			return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 		}
 
-		rankID := user.StaffRank
+		adminRankID := user.StaffRank
+		developerRankID := user.DeveloperRank
 
-		rank, err := rankSrv.SearchRankByID(c, rankID)
-		if err != nil {
-			return err
+		adminRank, aRankErr := rankSrv.SearchRankByID(c, adminRankID)
+		if aRankErr != nil {
+			return aRankErr
+		}
+		developerRank, devRankErr := rankSrv.SearchRankByID(c, developerRankID)
+		if devRankErr != nil {
+			return devRankErr
 		}
 
-		c.Locals("rank", rank)
+		c.Locals("rank", []*models.RankStructure{adminRank, developerRank})
 
 		return c.Next()
 	}
 }
 
-func RequireRankFlag(flags ...string) fiber.Handler {
+func RequireFlag(flags ...string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		val := c.Locals("rank")
-		rank, ok := val.(*models.RankStructure)
+		userVal := c.Locals("user")
+
+		ranks, ok := val.([]*models.RankStructure)
+		if !ok || len(ranks) == 0 {
+			return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
+		}
+		user, ok := userVal.(*models.User)
 		if !ok {
-			return &fiber.Error{Code: 401, Message: "unauthorized"}
+			return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 		}
 
-		for _, flag := range flags {
-			if rank.HasFlag(flag) {
-				return c.Next()
+		userFlags := user.Flags
+
+		for _, requiredFlag := range flags {
+			for _, rank := range ranks {
+				if rank.HasFlag(requiredFlag) {
+					return c.Next()
+				}
+			}
+			for _, userFlag := range *userFlags {
+				if userFlag == requiredFlag || userFlag == "MANAGER" {
+					return c.Next()
+				}
 			}
 		}
 
 		slog.WithData(slog.M{
 			"required_flags": flags,
-			"rank":           rank,
+			"rank":           ranks,
+			"user":           user,
 		}).Errorf("action stopped because it must have flags: %v", flags)
 
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error":          "forbidden",
-			"required_flags": flags,
-		})
+		return fiber.NewError(fiber.StatusForbidden, fmt.Sprintf("forbidden. required flags: %s", flags))
 	}
 }
 
@@ -63,7 +83,10 @@ func UpdateLastLogin(repo *mysql.Repository) fiber.Handler {
 		if user != nil {
 			if u, ok := user.(*models.User); ok && u != nil {
 				if updateErr := repo.UpdateLastLogin(c, u.ID); updateErr != nil {
-					slog.Warn("Failed to update last_login", "userID", u.ID, "error", updateErr)
+					slog.WithData(slog.M{
+						"userID": u.ID,
+						"error":  updateErr,
+					}).Warn("Failed to update last_login")
 				}
 			}
 		}

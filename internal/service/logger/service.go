@@ -17,12 +17,12 @@ func NewService(r mysql.Repository) *Service {
 	return &Service{repo: r}
 }
 
-func (s *Service) GetCommonLogs(ctx context.Context) ([]models.LogDTO, error) {
-	return s.repo.GetCommonLogs(ctx)
+func (s *Service) GetCommonLogs(ctx context.Context, startDate, endDate, keywords string) ([]models.CommonLog, int, error) {
+	return s.repo.GetCommonLogs(ctx, startDate, endDate, keywords)
 }
 
-func (s *Service) GetPunishmentLogs(ctx context.Context) ([]models.LogDTO, error) {
-	return s.repo.GetPunishmentLogs(ctx)
+func (s *Service) GetPunishmentLogs(ctx context.Context, startDate, endDate, keywords string) ([]models.PunishmentLog, int, error) {
+	return s.repo.GetPunishmentLogs(ctx, startDate, endDate, keywords)
 }
 
 func (s *Service) Log(
