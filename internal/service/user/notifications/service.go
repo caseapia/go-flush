@@ -9,6 +9,7 @@ import (
 	"github.com/caseapia/goproject-flush/internal/repository/mysql"
 	"github.com/caseapia/goproject-flush/internal/service/logger"
 	"github.com/gofiber/fiber/v2"
+
 )
 
 type Service struct {
@@ -33,8 +34,10 @@ func (s *Service) SendNotification(ctx context.Context, userID uint64, notifyTyp
 		},
 	)
 
-	addInfo := fmt.Sprintf("Title: %s | Type: %s | Text: %s", title, notifyType, text)
-	s.logger.Log(ctx, models.CommonLogger, *senderID, &userID, models.SendNotification, addInfo)
+	if senderID != nil {
+		addInfo := fmt.Sprintf("Title: %s | Type: %s | Text: %s", title, notifyType, text)
+		s.logger.Log(ctx, models.CommonLogger, *senderID, &userID, models.SendNotification, addInfo)
+	}
 }
 
 func (s *Service) PopulateNotifications(ctx context.Context, userID uint64, senderID uint64) ([]models.Notification, error) {
