@@ -38,7 +38,7 @@ const (
 	DeleteInvite           Action = "has deleted invite code"
 	ChangeUserData         Action = "has changed user's data"
 	ChangeUserPassword     Action = "has changed user's password"
-	ResetUserSensetiveData Action = "has reset user mail and IPs"
+	ResetUserSensetiveData Action = "has reset user IPs and last seen information"
 	EditRank               Action = "has edited rank"
 )
 

@@ -10,6 +10,7 @@ import (
 	"github.com/caseapia/goproject-flush/internal/handler/logger"
 	"github.com/caseapia/goproject-flush/internal/handler/ranks"
 	"github.com/caseapia/goproject-flush/internal/handler/user"
+	"github.com/caseapia/goproject-flush/internal/handler/user/notifications"
 	"github.com/caseapia/goproject-flush/internal/middleware"
 	mysqlRepo "github.com/caseapia/goproject-flush/internal/repository/mysql"
 	authService "github.com/caseapia/goproject-flush/internal/service/auth"
@@ -17,6 +18,7 @@ import (
 	loggerService "github.com/caseapia/goproject-flush/internal/service/logger"
 	ranksService "github.com/caseapia/goproject-flush/internal/service/ranks"
 	userService "github.com/caseapia/goproject-flush/internal/service/user"
+	notifyService "github.com/caseapia/goproject-flush/internal/service/user/notifications"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gookit/slog"
@@ -36,9 +38,10 @@ func NewApp() (*fiber.App, error) {
 	mainRepo := mysqlRepo.NewRepository(dbs.Main)
 	logsRepo := mysqlRepo.NewRepository(dbs.Logs)
 
+	notifySrv := notifyService.NewService(*mainRepo)
 	loggerSrv := loggerService.NewService(*logsRepo)
 	ranksSrv := ranksService.NewService(mainRepo, loggerSrv)
-	userSrv := userService.NewService(mainRepo, loggerSrv)
+	userSrv := userService.NewService(mainRepo, loggerSrv, notifySrv)
 	inviteSrv := inviteService.NewService(mainRepo, *loggerSrv)
 	authSrv := authService.NewService(*mainRepo, *loggerSrv)
 
@@ -47,6 +50,7 @@ func NewApp() (*fiber.App, error) {
 	inviteHandler := invite.NewHandler(inviteSrv)
 	loggerHandler := logger.NewHandler(loggerSrv)
 	ranksHandler := ranks.NewHandler(ranksSrv)
+	notifyHandler := notifications.NewHandler(notifySrv)
 
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -118,6 +122,7 @@ func NewApp() (*fiber.App, error) {
 	inviteHandler.RegisterRoutes(private)
 	loggerHandler.RegisterRoutes(private)
 	ranksHandler.RegisterRoutes(private)
+	notifyHandler.RegisterRoutes(private)
 
 	return app, nil
 }

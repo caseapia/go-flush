@@ -6,7 +6,6 @@ import (
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/gookit/slog"
 	"github.com/uptrace/bun"
-
 )
 
 func (r *Repository) GetCommonLogs(ctx context.Context, startDate, endDate, keywords string) ([]models.CommonLog, int, error) {
@@ -65,8 +64,8 @@ func (r *Repository) GetPunishmentLogs(ctx context.Context, startDate, endDate, 
 	return logs, COLUMNS_LIMIT, err
 }
 
-func (l *Repository) SavePunishmentLog(ctx context.Context, entry interface{}) error {
-	_, err := l.db.NewInsert().
+func (r *Repository) SavePunishmentLog(ctx context.Context, entry interface{}) error {
+	_, err := r.db.NewInsert().
 		Model(entry).
 		Exec(ctx)
 	if err != nil {
@@ -78,8 +77,8 @@ func (l *Repository) SavePunishmentLog(ctx context.Context, entry interface{}) e
 	return nil
 }
 
-func (l *Repository) SaveCommonLog(ctx context.Context, entry interface{}) error {
-	_, err := l.db.NewInsert().
+func (r *Repository) SaveCommonLog(ctx context.Context, entry interface{}) error {
+	_, err := r.db.NewInsert().
 		Model(entry).
 		Exec(ctx)
 	if err != nil {
