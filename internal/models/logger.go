@@ -40,6 +40,9 @@ const (
 	ChangeUserPassword     Action = "has changed user's password"
 	ResetUserSensetiveData Action = "has reset user IPs and last seen information"
 	EditRank               Action = "has edited rank"
+	LookupNotifications    Action = "lookup user notifications"
+	SendNotification       Action = "send notify"
+	DeleteNotification     Action = "has deleted notification"
 )
 
 type BaseLog struct {

@@ -38,8 +38,8 @@ func NewApp() (*fiber.App, error) {
 	mainRepo := mysqlRepo.NewRepository(dbs.Main)
 	logsRepo := mysqlRepo.NewRepository(dbs.Logs)
 
-	notifySrv := notifyService.NewService(*mainRepo)
 	loggerSrv := loggerService.NewService(*logsRepo)
+	notifySrv := notifyService.NewService(*mainRepo, *loggerSrv)
 	ranksSrv := ranksService.NewService(mainRepo, loggerSrv)
 	userSrv := userService.NewService(mainRepo, loggerSrv, notifySrv)
 	inviteSrv := inviteService.NewService(mainRepo, *loggerSrv)

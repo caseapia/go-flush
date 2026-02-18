@@ -290,7 +290,7 @@ func (s *Service) SetStaffRank(ctx context.Context, adminID uint64, userID uint6
 	addInfo := fmt.Sprintf("Before: %s\nAfter: %s (%d)", oldRankName, newRank.Name, newRank.ID)
 
 	s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.SetStaffRank, addInfo)
-	s.notifier.SendNotification(ctx, userID, models.Information, "You've been assigned", fmt.Sprintf("You have been assigned as staff member. Your new staff rank is %s", newRank.Name), &adminID)
+	s.notifier.SendNotification(ctx, userID, models.Success, "You've been assigned", fmt.Sprintf("You have been assigned as staff member. Your new staff rank is %s", newRank.Name), &adminID)
 
 	return updatedUser, nil
 }
@@ -363,7 +363,7 @@ func (s *Service) SetDeveloperRank(ctx context.Context, adminID uint64, userId u
 
 	addInfo := fmt.Sprintf("Before: %s\nAfter: %s (%d)", oldRankInfo, r.Name, r.ID)
 	s.logger.Log(ctx, models.CommonLogger, adminID, &userId, models.SetDeveloperRank, addInfo)
-	s.notifier.SendNotification(ctx, userId, models.Information, "You've been assigned", fmt.Sprintf("You have been assigned as developer. Your new developer rank is %s", r.Name), &adminID)
+	s.notifier.SendNotification(ctx, userId, models.Success, "You've been assigned", fmt.Sprintf("You have been assigned as developer. Your new developer rank is %s", r.Name), &adminID)
 
 	return setRank, nil
 }
@@ -405,10 +405,10 @@ func (s *Service) ChangeUser(ctx context.Context, adminID uint64, userID uint64,
 	if password == nil {
 		addInfo := fmt.Sprintf("Before: %s\nAfter: %s", oldInfo, newInfo)
 		s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserData, addInfo)
-		s.notifier.SendNotification(ctx, userID, models.Information, "Your credentials has been changed", "Your username or e-mail has been changed by the admin. If you have not been asked to do this, please inform the administrators immediately.", &adminID)
+		s.notifier.SendNotification(ctx, userID, models.Error, "Your credentials has been changed", "Your username or e-mail has been changed by the admin. If you have not been asked to do this, please inform the administrators immediately.", &adminID)
 	} else {
 		s.logger.Log(ctx, models.CommonLogger, adminID, &userID, models.ChangeUserPassword)
-		s.notifier.SendNotification(ctx, userID, models.Information, "Your password has been changed", "Your password has been changed by the admin. If you have not been asked to do this, please inform the administrators immediately.", &adminID)
+		s.notifier.SendNotification(ctx, userID, models.Error, "Your password has been changed", "Your password has been changed by the admin. If you have not been asked to do this, please inform the administrators immediately.", &adminID)
 	}
 
 	return u, nil

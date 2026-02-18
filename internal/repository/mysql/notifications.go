@@ -53,6 +53,7 @@ func (r *Repository) ClearNotifications(ctx context.Context, userID uint64) ([]m
 	var notifications []models.Notification
 
 	_, err := r.db.NewDelete().
+		Model(&notifications).
 		Where("user_id = ?", userID).
 		Exec(ctx)
 	if err != nil {
@@ -61,4 +62,21 @@ func (r *Repository) ClearNotifications(ctx context.Context, userID uint64) ([]m
 	}
 
 	return notifications, nil
+}
+
+func (r *Repository) RemoveNotification(ctx context.Context, userID, notifyID uint64) (bool, error) {
+	res, err := r.db.NewDelete().
+		Model((*models.Notification)(nil)).
+		Where("user_id = ? AND id = ?", userID, notifyID).
+		Exec(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	return affected > 0, nil
 }

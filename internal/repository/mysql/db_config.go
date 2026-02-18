@@ -5,7 +5,7 @@ package mysql
 	will be returned to the user. Please
 	do not specify more than 500 columns here.
 */
-var LOGS_COLUMNS_LIMIT = 100
+var LOGS_COLUMNS_LIMIT = 30
 
 /*
 	The maximum number of columns that will be returned to the user.

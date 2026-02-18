@@ -35,3 +35,7 @@ type SendNotificationInput struct {
 	UserID   uint64            `json:"userId"`
 	Text     string            `json:"text"`
 }
+
+type RemoveNotificationsInput struct {
+	NotifyID uint64 `json:"id"`
+}

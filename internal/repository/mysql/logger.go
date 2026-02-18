@@ -34,7 +34,7 @@ func (r *Repository) GetCommonLogs(ctx context.Context, startDate, endDate, keyw
 	}
 
 	err := query.Scan(ctx)
-	return logs, COLUMNS_LIMIT, err
+	return logs, LOGS_COLUMNS_LIMIT, err
 }
 
 func (r *Repository) GetPunishmentLogs(ctx context.Context, startDate, endDate, keywords string) ([]models.PunishmentLog, int, error) {
@@ -45,7 +45,7 @@ func (r *Repository) GetPunishmentLogs(ctx context.Context, startDate, endDate, 
 		Relation("Admin").
 		Relation("User").
 		Order("date DESC").
-		Limit(COLUMNS_LIMIT)
+		Limit(LOGS_COLUMNS_LIMIT)
 
 	if startDate != "" {
 		query = query.Where("date >= ?", startDate)
@@ -61,7 +61,7 @@ func (r *Repository) GetPunishmentLogs(ctx context.Context, startDate, endDate, 
 	}
 
 	err := query.Scan(ctx)
-	return logs, COLUMNS_LIMIT, err
+	return logs, LOGS_COLUMNS_LIMIT, err
 }
 
 func (r *Repository) SavePunishmentLog(ctx context.Context, entry interface{}) error {
