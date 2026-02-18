@@ -3,11 +3,13 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/caseapia/goproject-flush/internal/models"
 	"github.com/caseapia/goproject-flush/internal/repository/mysql"
 	"github.com/caseapia/goproject-flush/internal/service/logger"
+	"github.com/caseapia/goproject-flush/internal/service/user/notifications"
 	"github.com/caseapia/goproject-flush/internal/utils"
 	"github.com/caseapia/goproject-flush/pkg/utils/hash"
 	"github.com/gofiber/fiber/v2"
@@ -19,10 +21,11 @@ import (
 type Service struct {
 	repository mysql.Repository
 	logger     logger.Service
+	notifier   notifications.Service
 }
 
-func NewService(userRepo mysql.Repository, logger logger.Service) *Service {
-	return &Service{repository: userRepo, logger: logger}
+func NewService(userRepo mysql.Repository, logger logger.Service, notifier notifications.Service) *Service {
+	return &Service{repository: userRepo, logger: logger, notifier: notifier}
 }
 
 var ErrInvalidToken = &fiber.Error{Code: 400, Message: "invalid token"}
@@ -42,7 +45,12 @@ func (s *Service) Register(ctx context.Context, name, invite, email, password, i
 		RegisterIP:   ip,
 	}
 
-	return user, s.repository.Create(ctx, user)
+	newUser, err := s.repository.Create(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return newUser, nil
 }
 
 func (s *Service) Login(ctx context.Context, login, password, userAgent, ip string) (string, string, error) {
@@ -75,6 +83,8 @@ func (s *Service) Login(ctx context.Context, login, password, userAgent, ip stri
 	if err := s.repository.CreateSession(ctx, session); err != nil {
 		return "", "", err
 	}
+
+	s.notifier.SendNotification(ctx, user.ID, models.Success, "You have new session", fmt.Sprintf("You have new login on your account from: %s. If it's not you, send this information to the admins immediately", ip), nil)
 
 	accessToken, err := utils.GenerateAccessToken(user.ID, sessionID, user.TokenVersion)
 	if err != nil {

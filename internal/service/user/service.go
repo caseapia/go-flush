@@ -322,6 +322,7 @@ func (s *Service) EditUserFlags(ctx context.Context, senderID uint64, userID uin
 
 	addInfo := fmt.Sprintf("Before: %s\nAfter: %s", oldFlags, strings.Join(*updatedUser.Flags, ", "))
 	s.logger.Log(ctx, models.CommonLogger, senderID, &userID, models.ChangeFlags, addInfo)
+	s.notifier.SendNotification(ctx, userID, models.Success, "Your personal flags has been updated", fmt.Sprintf("Your personal flags has been updated. Your new flags is: %s", updatedUser.Flags), &senderID)
 
 	return updatedUser, nil
 }

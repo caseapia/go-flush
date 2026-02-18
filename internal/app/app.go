@@ -43,7 +43,7 @@ func NewApp() (*fiber.App, error) {
 	ranksSrv := ranksService.NewService(mainRepo, loggerSrv)
 	userSrv := userService.NewService(mainRepo, loggerSrv, notifySrv)
 	inviteSrv := inviteService.NewService(mainRepo, *loggerSrv)
-	authSrv := authService.NewService(*mainRepo, *loggerSrv)
+	authSrv := authService.NewService(*mainRepo, *loggerSrv, *notifySrv)
 
 	authHandler := auth.NewHandler(authSrv, inviteSrv)
 	userHandler := user.NewUserHandler(userSrv, ranksSrv)

@@ -9,11 +9,11 @@ import (
 	"github.com/gookit/slog"
 )
 
-func (r *Repository) Create(ctx context.Context, user *models.User) error {
+func (r *Repository) Create(ctx context.Context, user *models.User) (*models.User, error) {
 	_, err := r.db.NewInsert().
 		Model(user).
 		Exec(ctx)
-	return err
+	return user, err
 }
 
 func (r *Repository) SearchByLogin(ctx context.Context, login string) (*models.User, error) {
