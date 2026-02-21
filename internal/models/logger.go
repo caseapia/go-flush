@@ -12,7 +12,7 @@ type Action string
 const (
 	CommonLogger     = "common"
 	PunishmentLogger = "punish"
-	SystemLogger     = "system"
+	TicketLogger     = "tickets"
 )
 
 const (
@@ -43,36 +43,47 @@ const (
 	LookupNotifications    Action = "lookup user notifications"
 	SendNotification       Action = "send notify"
 	DeleteNotification     Action = "has deleted notification"
+	AssignedToTicket       Action = "has assigned to the ticket"
+	CloseTicket            Action = "has closed ticket"
 )
 
 type BaseLog struct {
 	ID             uint64    `bun:"id,pk,autoincrement" json:"id"`
 	Date           time.Time `bun:"date,notnull" json:"date"`
-	AdminID        uint64    `bun:"admin_id,notnull" json:"adminId"`
 	Action         Action    `bun:"action,notnull" json:"action"`
-	UserID         *uint64   `bun:"user_id" json:"userId"`
 	AdditionalInfo *string   `bun:"additional_information" json:"additionalInfo,omitempty"`
-
-	Admin *User `bun:"rel:belongs-to,join:admin_id=id" json:"admin"`
-	User  *User `bun:"rel:belongs-to,join:user_id=id" json:"user"`
 }
 
 type CommonLog struct {
 	bun.BaseModel `bun:"table:admin_common"`
 	BaseLog
-	Limit int `bun:"-" json:"limit"`
+	AdminID uint64  `bun:"admin_id,notnull" json:"-"`
+	UserID  *uint64 `bun:"user_id" json:"-"`
+	Limit   int     `bun:"-" json:"limit"`
+
+	User  *User `bun:"rel:belongs-to,join:user_id=id" json:"user"`
+	Admin *User `bun:"rel:belongs-to,join:admin_id=id" json:"admin"`
 }
 type PunishmentLog struct {
 	bun.BaseModel `bun:"table:admin_punishments"`
 	BaseLog
-	Limit int `bun:"-" json:"limit"`
+	AdminID uint64  `bun:"admin_id,notnull" json:"-"`
+	UserID  *uint64 `bun:"user_id" json:"-"`
+	Limit   int     `bun:"-" json:"limit"`
+
+	User  *User `bun:"rel:belongs-to,join:user_id=id" json:"user"`
+	Admin *User `bun:"rel:belongs-to,join:admin_id=id" json:"admin"`
 }
 
-type SystemLog struct {
-	bun.BaseModel `bun:"table:system"`
-	ID            uint64    `bun:"id,pk,autoincrement" json:"id"`
-	Date          time.Time `bun:"date,notnull" json:"date"`
-	Event         string    `bun:"event,notnull" json:"event"`
+type TicketsLog struct {
+	bun.BaseModel `bun:"table:tickets_log"`
+	BaseLog
+	AdminID uint64  `bun:"admin_id,notnull" json:"-"`
+	UserID  *uint64 `bun:"user_id" json:"-"`
+
+	Limit int   `bun:"-" json:"limit"`
+	User  *User `bun:"rel:belongs-to,join:user_id=id" json:"user"`
+	Admin *User `bun:"rel:belongs-to,join:admin_id=id" json:"admin"`
 }
 
 type LogPopulate struct {

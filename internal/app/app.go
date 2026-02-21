@@ -11,6 +11,7 @@ import (
 	"github.com/caseapia/goproject-flush/internal/handler/ranks"
 	"github.com/caseapia/goproject-flush/internal/handler/user"
 	"github.com/caseapia/goproject-flush/internal/handler/user/notifications"
+	"github.com/caseapia/goproject-flush/internal/handler/user/tickets"
 	"github.com/caseapia/goproject-flush/internal/middleware"
 	mysqlRepo "github.com/caseapia/goproject-flush/internal/repository/mysql"
 	authService "github.com/caseapia/goproject-flush/internal/service/auth"
@@ -19,6 +20,7 @@ import (
 	ranksService "github.com/caseapia/goproject-flush/internal/service/ranks"
 	userService "github.com/caseapia/goproject-flush/internal/service/user"
 	notifyService "github.com/caseapia/goproject-flush/internal/service/user/notifications"
+	ticketsService "github.com/caseapia/goproject-flush/internal/service/user/tickets"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gookit/slog"
@@ -44,6 +46,7 @@ func NewApp() (*fiber.App, error) {
 	userSrv := userService.NewService(mainRepo, loggerSrv, notifySrv)
 	inviteSrv := inviteService.NewService(mainRepo, *loggerSrv)
 	authSrv := authService.NewService(*mainRepo, *loggerSrv, *notifySrv)
+	ticketsSrv := ticketsService.NewService(*mainRepo, *notifySrv, *loggerSrv)
 
 	authHandler := auth.NewHandler(authSrv, inviteSrv)
 	userHandler := user.NewUserHandler(userSrv, ranksSrv)
@@ -51,6 +54,7 @@ func NewApp() (*fiber.App, error) {
 	loggerHandler := logger.NewHandler(loggerSrv)
 	ranksHandler := ranks.NewHandler(ranksSrv)
 	notifyHandler := notifications.NewHandler(notifySrv)
+	ticketsHandler := tickets.NewHandler(ticketsSrv)
 
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -123,6 +127,7 @@ func NewApp() (*fiber.App, error) {
 	loggerHandler.RegisterRoutes(private)
 	ranksHandler.RegisterRoutes(private)
 	notifyHandler.RegisterRoutes(private)
+	ticketsHandler.RegisterRoutes(private)
 
 	return app, nil
 }

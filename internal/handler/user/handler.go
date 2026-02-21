@@ -359,7 +359,7 @@ func (h *Handler) RegisterRoutes(router fiber.Router) {
 	groupAdmin.Delete("/delete/:id", middleware.RequireFlag("SENIOR"), h.DeleteUser)
 	groupAdmin.Put("/restore/:id", middleware.RequireFlag("MANAGER"), h.RestoreUser)
 	groupAdmin.Patch("/rank/staff/:id", middleware.RequireFlag("STAFFMANAGEMENT"), h.SetStaffRank)
-	groupAdmin.Patch("/rank/developer/:id", middleware.RequireFlag("STAFFMANAGEMENT"), h.SetDeveloperRank)
+	groupAdmin.Patch("/rank/developer/:id", middleware.RequireFlag("MANAGER"), h.SetDeveloperRank)
 	groupAdmin.Get("/:id", middleware.RequireFlag("ADMIN"), h.GetUserPrivate)
 	groupAdmin.Patch("/edit/:id", middleware.RequireFlag("MANAGER"), h.ChangeUser)
 	groupAdmin.Patch("/editflag/:id", middleware.RequireFlag("STAFFMANAGEMENT"), h.EditUserFlags)

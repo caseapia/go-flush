@@ -5,29 +5,39 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/uptrace/bun"
+
 )
 
 type User struct {
 	bun.BaseModel `bun:"table:flushproject.users"`
 
-	ID            uint64       `bun:"id,pk,autoincrement,unique" json:"id"`
-	Name          string       `bun:"name,unique,notnull" json:"name"`
-	Email         string       `bun:"email" json:"-"`
-	Password      string       `bun:"password" json:"-"`
-	IsVerified    bool         `bun:"is_verified" json:"isVerified"`
-	IsDeleted     bool         `bun:"is_deleted" json:"isDeleted,omitempty"`
-	StaffRank     int          `bun:"staff_rank,default:1" json:"staffRank"`
-	DeveloperRank int          `bun:"developer_rank,default:1" json:"developerRank"`
-	Flags         *[]string    `bun:"staff_flags" json:"staffFlags"`
-	CreatedAt     time.Time    `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
-	UpdatedAt     time.Time    `bun:"updated_at,notnull,default:current_timestamp" json:"updatedAt"`
-	DeletedAt     *time.Time   `bun:"deleted_at,nullzero" json:"-"`
-	TokenVersion  int          `bun:"token_version" json:"-"`
-	ActiveBanID   *uint64      `bun:"active_ban" json:"-"`
-	ActiveBan     *BanModelDTO `bun:"rel:has-one,join:active_ban=id" json:"activeBan"`
-	LastLogin     *time.Time   `bun:"last_login" json:"lastLogin"`
-	RegisterIP    string       `bun:"register_ip" json:"-"`
-	LastIP        string       `bun:"last_ip" json:"-"`
+	// Basic
+	ID        uint64     `bun:"id,pk,autoincrement,unique" json:"id"`
+	Name      string     `bun:"name,unique,notnull" json:"name"`
+	CreatedAt time.Time  `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
+	UpdatedAt time.Time  `bun:"updated_at,notnull,default:current_timestamp" json:"updatedAt"`
+	DeletedAt *time.Time `bun:"deleted_at,nullzero" json:"-"`
+	LastLogin *time.Time `bun:"last_login" json:"lastLogin"`
+
+	// Staff
+	StaffRank     int       `bun:"staff_rank,default:1" json:"staffRank"`
+	DeveloperRank int       `bun:"developer_rank,default:1" json:"developerRank"`
+	Flags         *[]string `bun:"staff_flags" json:"staffFlags"`
+
+	// Restrictions
+	ActiveBanID *uint64      `bun:"active_ban" json:"-"`
+	ActiveBan   *BanModelDTO `bun:"rel:has-one,join:active_ban=id" json:"activeBan"`
+	IsDeleted   bool         `bun:"is_deleted" json:"isDeleted,omitempty"`
+	IsVerified  bool         `bun:"is_verified" json:"isVerified"`
+
+	// Auth
+	TokenVersion int `bun:"token_version" json:"-"`
+
+	// Sensitive Data
+	Password   string `bun:"password" json:"-"`
+	Email      string `bun:"email" json:"email"`
+	RegisterIP string `bun:"register_ip" json:"-"`
+	LastIP     string `bun:"last_ip" json:"-"`
 }
 
 type BanRequest struct {

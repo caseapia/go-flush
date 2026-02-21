@@ -38,6 +38,8 @@ func (l *Handler) SearchLogs(c *fiber.Ctx) error {
 		logs, limit, err = l.service.GetCommonLogs(c.UserContext(), input.StartDate, input.EndDate, keywords)
 	case "punish":
 		logs, limit, err = l.service.GetPunishmentLogs(c.UserContext(), input.StartDate, input.EndDate, keywords)
+	case "tickets":
+		logs, limit, err = l.service.GetTicketsLog(c.UserContext(), input.StartDate, input.EndDate, keywords)
 	default:
 		return fiber.NewError(fiber.StatusNotFound, "invalid log type")
 	}

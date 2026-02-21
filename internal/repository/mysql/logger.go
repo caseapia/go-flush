@@ -37,6 +37,33 @@ func (r *Repository) GetCommonLogs(ctx context.Context, startDate, endDate, keyw
 	return logs, LOGS_COLUMNS_LIMIT, err
 }
 
+func (r *Repository) GetTicketsLog(ctx context.Context, startDate, endDate, keywords string) ([]models.TicketsLog, int, error) {
+	var logs []models.TicketsLog
+
+	query := r.db.NewSelect().
+		Model(&logs).
+		Relation("Admin").
+		Relation("User").
+		Order("date DESC").
+		Limit(LOGS_COLUMNS_LIMIT)
+
+	if startDate != "" {
+		query = query.Where("date >= ?", startDate)
+	}
+	if endDate != "" {
+		query = query.Where("date <= ?", endDate)
+	}
+	if keywords != "" {
+		query = query.WhereGroup("AND", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("action ILIKE ?", "%"+keywords+"%").
+				WhereOr("additional_information ILIKE ?", "%"+keywords+"%")
+		})
+	}
+
+	err := query.Scan(ctx)
+	return logs, LOGS_COLUMNS_LIMIT, err
+}
+
 func (r *Repository) GetPunishmentLogs(ctx context.Context, startDate, endDate, keywords string) ([]models.PunishmentLog, int, error) {
 	var logs []models.PunishmentLog
 
@@ -78,6 +105,19 @@ func (r *Repository) SavePunishmentLog(ctx context.Context, entry interface{}) e
 }
 
 func (r *Repository) SaveCommonLog(ctx context.Context, entry interface{}) error {
+	_, err := r.db.NewInsert().
+		Model(entry).
+		Exec(ctx)
+	if err != nil {
+		slog.WithData(slog.M{"error": err}).Error("failed to insert action log!")
+		return err
+	}
+
+	slog.WithData(slog.M{"entryData": entry}).Debugf("log inserted successfully")
+	return nil
+}
+
+func (r *Repository) SaveTicketsLog(ctx context.Context, entry interface{}) error {
 	_, err := r.db.NewInsert().
 		Model(entry).
 		Exec(ctx)

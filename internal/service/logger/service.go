@@ -25,10 +25,14 @@ func (s *Service) GetPunishmentLogs(ctx context.Context, startDate, endDate, key
 	return s.repo.GetPunishmentLogs(ctx, startDate, endDate, keywords)
 }
 
+func (s *Service) GetTicketsLog(ctx context.Context, startDate, endDate, keywords string) ([]models.TicketsLog, int, error) {
+	return s.repo.GetTicketsLog(ctx, startDate, endDate, keywords)
+}
+
 func (s *Service) Log(
 	ctx context.Context,
 	loggerType models.LoggerType,
-	adminID uint64,
+	adminID *uint64,
 	userID *uint64,
 	action interface{},
 	additional ...string,
@@ -39,41 +43,41 @@ func (s *Service) Log(
 	}
 
 	base := models.BaseLog{
-		AdminID:        adminID,
-		UserID:         userID,
 		AdditionalInfo: addInfo,
 		Date:           time.Now(),
 	}
 
-	switch loggerType {
-	case models.PunishmentLogger:
-		act, ok := action.(models.Action)
-		if !ok {
-			slog.WithData(slog.M{
-				"action": action,
-			}).Error("expected models.Action for PunishmentLogger")
-		}
-		base.Action = act
+	act, ok := action.(models.Action)
+	if !ok {
+		slog.Error("invalid action type")
+		return
+	}
+	base.Action = act
 
+	switch loggerType {
+
+	case models.PunishmentLogger:
 		s.repo.SavePunishmentLog(ctx, &models.PunishmentLog{
 			BaseLog: base,
+			AdminID: *adminID,
+			UserID:  userID,
 		})
 
 	case models.CommonLogger:
-		act, ok := action.(models.Action)
-		if !ok {
-			slog.WithData(slog.M{
-				"action": action,
-			}).Error("expected models.Action for CommonLogger")
-		}
-		base.Action = act
 		s.repo.SaveCommonLog(ctx, &models.CommonLog{
 			BaseLog: base,
+			AdminID: *adminID,
+			UserID:  userID,
+		})
+
+	case models.TicketLogger:
+		s.repo.SaveTicketsLog(ctx, &models.TicketsLog{
+			BaseLog: base,
+			AdminID: *adminID,
+			UserID:  userID,
 		})
 
 	default:
-		slog.WithData(slog.M{
-			"loggerType": loggerType,
-		}).Error("unknown logger type")
+		slog.Error("unknown logger type")
 	}
 }

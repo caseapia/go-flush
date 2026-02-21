@@ -50,17 +50,18 @@ func RequireFlag(flags ...string) fiber.Handler {
 			return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 		}
 
-		userFlags := user.Flags
-
 		for _, requiredFlag := range flags {
 			for _, rank := range ranks {
-				if rank.HasFlag(requiredFlag) {
+				if rank != nil && rank.HasFlag(requiredFlag) {
 					return c.Next()
 				}
 			}
-			for _, userFlag := range *userFlags {
-				if userFlag == requiredFlag || userFlag == "MANAGER" {
-					return c.Next()
+
+			if user.Flags != nil {
+				for _, userFlag := range *user.Flags {
+					if userFlag == requiredFlag || userFlag == "MANAGER" {
+						return c.Next()
+					}
 				}
 			}
 		}
